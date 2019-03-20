@@ -1,6 +1,8 @@
 #include <iostream>
 #include <cuda.h>
 
+__global__ void conv_fp(float* d_out, float* d_img,float* d_filter,int channel_in,int channel_out,int kernel_size,int img_height,int img_width){
+
 class Conv2d
 {
 public:
@@ -34,7 +36,9 @@ Conv2d::Conv2d(int channel_in, int channel_out, int kernel_size)
 	// 		}
 	// 	}
 	// }
-	weight = new float[channel_out*kernel_size*kernel_size*channel_in];//Initialize the weights
+	weight = new float[channel_out*kernel_size*kernel_size*channel_in]();//Initialize the weights
+	for(int i = 0; i < channel_out*kernel_size*kernel_size*channel_in; i++)
+		weight[i] = rand()/RAND_MAX;
 	bias = 0.0;//replace with random
 }
 
@@ -42,7 +46,7 @@ class FC
 {
 public:
 
-	float **weights;
+	float **weight;
 	float bias;
 
 	FC(int in_features, int out_features);
@@ -80,18 +84,41 @@ public:
 	void backward();
 };
 
-void Conv2d::forward(){
+void Conv2d::forward(float* image, int img_height, int img_width)
+{
+	float* h_out = new float[img_height*img_width*channel_out]();
+
 	dim3 grid(1,1,channel_out);
 	dim3 block(img_height,img_width,1);
+
 	size_t size_img = img_width*img_height*channel_in;
 	size_t size_filter = kernel_size*kernel_size*channel_out*channel_in;
+	size_t size_out = img_height*img_width*channel_out;
+
 	float *d_img = NULL;
-    err = cudaMalloc((void **)&d_img, size_img);
-    float *d_filter = NULL;
-    err = cudaMalloc((void **)&d_filter, size_filter);
-    printf("Copy input feature map from the host memory to the CUDA device\n");
-    err = cudaMemcpy(d_img, image, size_img, cudaMemcpyHostToDevice);
-    printf("Copy input weight filter from the host memory to the CUDA device\n");
-    err = cudaMemcpy(d_filter, weight, size_filter, cudaMemcpyHostToDevice);
-    conv_fp <<<grid,block>>>(d_img, d_filter, channel_in, channel_out, kernel_size, img_height, img_width);
+	err = cudaMalloc((void **)&d_img, size_img);
+
+	float *d_filter = NULL;
+	err = cudaMalloc((void **)&d_filter, size_filter);
+
+	float* d_out = NULL;
+	err = cudaMalloc((void **)&d_out, size_out);
+
+	printf("Copy input feature map from the host memory to the CUDA device\n");
+	err = cudaMemcpy(d_img, image, size_img, cudaMemcpyHostToDevice);
+
+	printf("Copy input weight filter from the host memory to the CUDA device\n");
+	err = cudaMemcpy(d_filter, weight, size_filter, cudaMemcpyHostToDevice);
+
+	conv_fp <<<grid,block>>>(d_out, d_img, d_filter, channel_in, channel_out, kernel_size, img_height, img_width);
+
+	printf("Copy output data from the CUDA device to the host memory\n");
+	err = cudaMemcpy(h_out, d_out, size_out, cudaMemcpyDeviceToHost);
+
+    err = cudaFree(d_filter);
+    err = cudaFree(d_img);
+    err = cudaFree(d_out);
+
+    err = cudaDeviceReset();
+    cout<<"Partyyyy\n";
 }
