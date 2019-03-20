@@ -3,17 +3,22 @@ __global__ void conv_fp(float* d_out, float* d_img,float* d_filter,int channel_i
 	int t_y = blockIdx.y*blockDim.y + threadIdx.y;
 	int t_z = blockIdx.z*blockDim.z + threadIdx.z;
 	
-	for(int i = ty - kernel_size/2; i <= ty + kernel_size/2; i++)
+	d_out[t_z*(img_width*img_height) + t_y*img_width + t_x] = 0;
+	
+	for(int i = t_y - kernel_size/2; i <= t_y + kernel_size/2; i++)
 	{
-		for(int j = tx - kernel_size/2; j <= tx + kernel_size/2; j++)
+		for(int j = t_x - kernel_size/2; j <= t_x + kernel_size/2; j++)
 		{
 			if(i < 0 || j < 0 || i >= img_height || j >= img_width)
 				continue;
-			d_out[t_z*(img_width*img_height) + i*img_width + j] = 0;
+			
+			
 			for(int k = 0; k < channel_in; k++)
 			{
-				d_out[t_z*(img_width*img_height) + i*img_width + j] += d_img[k*(img_width*img_height) + i*img_width + j]*d_filter[t_z*(kernel_size*kernel_size*channel_in) + k*(kernel_size*kernel_size) + (i - ty + kernel_size/2) + j - tx + kernel_size/2];
+				d_out[t_z*(img_width*img_height) + t_y*img_width + t_x] += d_img[k*(img_width*img_height) + i*img_width + j]*d_filter[t_z*(kernel_size*kernel_size*channel_in) + k*(kernel_size*kernel_size) + i - t_y + kernel_size/2 + j - t_x + kernel_size/2];
+				// d_out[0] += d_img[k*(img_width*img_height) + i*img_width + j]*d_filter[t_z*(kernel_size*kernel_size*channel_in) + k*(kernel_size*kernel_size) + (i - t_y + kernel_size/2) + j - t_x + kernel_size/2];
 			}
 		}
 	}
+	// d_out[0] = d_filter[2];
 }

@@ -1,18 +1,21 @@
 #include <iostream>
 #include <cuda.h>
+#include <cuda_runtime.h>
+#include <stdio.h>
 
-__global__ void conv_fp(float* d_out, float* d_img,float* d_filter,int channel_in,int channel_out,int kernel_size,int img_height,int img_width){
+using namespace std;
+__global__ void conv_fp(float* d_out, float* d_img,float* d_filter,int channel_in,int channel_out,int kernel_size,int img_height,int img_width);
 
 class Conv2d
 {
 public:
 
-	float ****weight; //channels_out, channels_in, kernel_size, kernel_size
+	float *weight; //channels_out, channels_in, kernel_size, kernel_size
 	float bias;
 	int channel_in, channel_out, kernel_size;
 
 	Conv2d(int channel_in, int channel_out, int kernel_size);
-	void forward();
+	float* forward(float* image, int img_width, int img_height);
 	void backward();
 };
 
@@ -36,9 +39,14 @@ Conv2d::Conv2d(int channel_in, int channel_out, int kernel_size)
 	// 		}
 	// 	}
 	// }
+	cout<<"\n the weight is: ";
 	weight = new float[channel_out*kernel_size*kernel_size*channel_in]();//Initialize the weights
-	for(int i = 0; i < channel_out*kernel_size*kernel_size*channel_in; i++)
-		weight[i] = rand()/RAND_MAX;
+	for(int i = 0; i < channel_out*kernel_size*kernel_size*channel_in; i++){
+		weight[i] = 1;//rand()/RAND_MAX;
+		cout<<weight[i]<<" ";
+	}
+
+
 	bias = 0.0;//replace with random
 }
 
@@ -54,7 +62,7 @@ public:
 	void backward();
 };
 
-class max_pool()
+class max_pool
 {
 public:
 	int** mask; //to remember the location
@@ -62,21 +70,21 @@ public:
 	void backward();
 };
 
-class ReLU()
+class ReLU
 {
 public:
 	void forward();
 	void backward();
 };
 
-class softmax()
+class softmax
 {
 public:
 	void forward();
 	void backward();
 };
 
-class dropout()
+class dropout
 {
 public:
 	bool** mask;
@@ -84,41 +92,96 @@ public:
 	void backward();
 };
 
-void Conv2d::forward(float* image, int img_height, int img_width)
+float* Conv2d::forward(float* image, int img_height, int img_width)
 {
-	float* h_out = new float[img_height*img_width*channel_out]();
+	cudaError_t err = cudaSuccess;
+	float* h_out = new float[img_height*img_width*channel_out];
+	cout<<"\n THe input is: ";
+    for (int i = 0; i<5*5*3;i++)
+        cout<<image[i]<<" ";
 
 	dim3 grid(1,1,channel_out);
 	dim3 block(img_height,img_width,1);
 
-	size_t size_img = img_width*img_height*channel_in;
-	size_t size_filter = kernel_size*kernel_size*channel_out*channel_in;
-	size_t size_out = img_height*img_width*channel_out;
+	size_t size_img = img_width*img_height*channel_in*sizeof(float);
+	size_t size_filter = kernel_size*kernel_size*channel_out*channel_in*sizeof(float);
+	size_t size_out = img_height*img_width*channel_out*sizeof(float);
 
 	float *d_img = NULL;
 	err = cudaMalloc((void **)&d_img, size_img);
+	if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate d_img (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
 
 	float *d_filter = NULL;
 	err = cudaMalloc((void **)&d_filter, size_filter);
+	if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate d_filter (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
 
 	float* d_out = NULL;
 	err = cudaMalloc((void **)&d_out, size_out);
+	if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate d_out (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
 
 	printf("Copy input feature map from the host memory to the CUDA device\n");
 	err = cudaMemcpy(d_img, image, size_img, cudaMemcpyHostToDevice);
+	if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy d_img (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
 
 	printf("Copy input weight filter from the host memory to the CUDA device\n");
 	err = cudaMemcpy(d_filter, weight, size_filter, cudaMemcpyHostToDevice);
+	if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy d_filter (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
 
 	conv_fp <<<grid,block>>>(d_out, d_img, d_filter, channel_in, channel_out, kernel_size, img_height, img_width);
+	err = cudaGetLastError();
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to launch  kernel (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
 
 	printf("Copy output data from the CUDA device to the host memory\n");
 	err = cudaMemcpy(h_out, d_out, size_out, cudaMemcpyDeviceToHost);
-
+	if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy h_out (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
     err = cudaFree(d_filter);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free d_filter (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
     err = cudaFree(d_img);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free d_img (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
     err = cudaFree(d_out);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free d_out (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
 
     err = cudaDeviceReset();
-    cout<<"Partyyyy\n";
+    printf("Partyyyy\n");
+    return (h_out);
 }

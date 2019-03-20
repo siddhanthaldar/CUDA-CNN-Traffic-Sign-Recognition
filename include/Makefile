@@ -1,6 +1,6 @@
 NVCC = nvcc
 
-cnn: headers.h kernel.cu host.cu
+cnn: header.h kernel.cu host.cu
 	$(NVCC) -I ./ kernel.cu host.cu -o cnn
 
 
