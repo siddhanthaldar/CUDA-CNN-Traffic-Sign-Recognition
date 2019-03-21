@@ -59,7 +59,7 @@ maxpool_bp(float *d_in, float *d_out, int *mask, int h, int w)  // h and w are d
 }
 
 __global__ void
-FC_fp(float *in, float *out, float *w, float *b, int m,int n,int p)
+FC_fp(float *in, float *out, float *w, float *b, int m,int n,int p) //m = out_size, n = in_size, p = num _data
 {
 	// dim3 grid(1,1,1);
 	// dim3 block(p,m,1);
@@ -89,12 +89,16 @@ FC_fp(float *in, float *out, float *w, float *b, int m,int n,int p)
 }
 
 __global__ void
-FC_bp(float *d_out, float *w, float *b, float *in, int m,int n,int p)
+FC_bp(float *d_out, float *w, float *b, float *in, int m,int n,int p)  // same as in fp
 {
 	int i = blockIdx.y * blockDim.y + threadIdx.y ;
 	int j = blockIdx.x * blockDim.x + threadIdx.x ;
 
-	
+	// if(i<m && j<p)
+	// {
+		
+	// }
+
 }
 
 
