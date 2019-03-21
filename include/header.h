@@ -7,6 +7,8 @@ using namespace std;
 __global__ void conv_fp(float* d_out, float* d_img,float* d_filter,int channel_in,int channel_out,int kernel_size,int img_height,int img_width);
 __global__ void conv_bp(float* d_del_weight, float* d_input, float* d_del_out, int channel_in,int channel_out,int kernel_size,int input_height,int input_width);
 __global__ void rotate(float* d_weight_t, float* d_weight, int channel_in, int channel_out, int kernel_size);
+__global__ void conv_bp_x(float* d_del_input, float* d_del_out, float* d_weight_t, int channel_in,int channel_out,int kernel_size,int input_height,int input_width);
+
 
 class Conv2d
 {
@@ -288,11 +290,39 @@ float* Conv2d::backward(float* del_out, float* input, int input_height, int inpu
     dim3 block_t(kernel_size, kernel_size, channel_in);
 
 	rotate <<<grid_t, block_t>>>(d_weight_t, d_weight, channel_in, channel_out, kernel_size);
-
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
         fprintf(stderr, "Failed to launch  kernel (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    //Now calculating gradients of input
+    float* del_input = new float[input_width*input_height*channel_in]();
+    dim3 grid_x(1, 1, channel_out*channel_in); //order is z, x, y
+    dim3 block_x(input_width, input_height, 1);
+
+	printf("Copy input weight filter from the host memory to the CUDA device\n");
+	err = cudaMemcpy(d_del_input, del_input, size_del_input, cudaMemcpyHostToDevice);
+	if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to initialize by zero (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    conv_bp_x <<<grid_x, block_x>>> (d_del_input, d_del_out, d_weight_t, channel_in, channel_out, kernel_size, input_height, input_width);
+	err = cudaGetLastError();
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to launch  kernel (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+	printf("Copy output data from the CUDA device to the host memory\n");
+	err = cudaMemcpy(del_input, d_del_input, size_del_input, cudaMemcpyDeviceToHost);
+	if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy del_input (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
 
@@ -304,12 +334,27 @@ float* Conv2d::backward(float* del_out, float* input, int input_height, int inpu
         exit(EXIT_FAILURE);
     }
 
+    err = cudaFree(d_weight_t);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free d_weight_t (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    err = cudaFree(d_del_input);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free d_del_input (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
     err = cudaFree(d_del_out);
     if (err != cudaSuccess)
     {
         fprintf(stderr, "Failed to free d_del_out (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
+
     err = cudaFree(d_input);
     if (err != cudaSuccess)
     {
