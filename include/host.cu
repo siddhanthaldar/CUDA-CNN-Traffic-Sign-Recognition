@@ -28,8 +28,11 @@ int main(void)
     float* out = h.backward(d_out, h_in, input_size, input_size);
 
     cout<<"\n THe output is: ";
-    for (int i = 0; i<18*2;i++)
+    for (int i = 0; i<5*5*2;i++)
+    {
+        if(i%input_size == 0) cout<<endl;
         cout<<out[i]<<" ";
+    }
     cout<<endl;
     
 }

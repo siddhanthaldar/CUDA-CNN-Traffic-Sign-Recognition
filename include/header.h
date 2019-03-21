@@ -32,10 +32,10 @@ Conv2d::Conv2d(int channel_in, int channel_out, int kernel_size)
 	// cout<<"\n the weight is: ";
 	weight = new float[channel_out*kernel_size*kernel_size*channel_in]();//Initialize the weights
 	del_weight = new float[channel_out*kernel_size*kernel_size*channel_in];//Initialize the weights
-	int c = 0;
+	// int c = 0;
 	for(int i = 0; i < channel_out*kernel_size*kernel_size*channel_in; i++)
 	{
-		weight[i] = c++;//rand()/RAND_MAX;
+		weight[i] = 1;//rand()/RAND_MAX;
 		// del_weight[i] = 0;
 		// cout<<weight[i]<<" ";
 	}
@@ -299,7 +299,7 @@ float* Conv2d::backward(float* del_out, float* input, int input_height, int inpu
 
     //Now calculating gradients of input
     float* del_input = new float[input_width*input_height*channel_in]();
-    dim3 grid_x(1, 1, channel_out*channel_in); //order is z, x, y
+    dim3 grid_x(1, 1, channel_in); //order is z, x, y
     dim3 block_x(input_width, input_height, 1);
 
 	printf("Copy input weight filter from the host memory to the CUDA device\n");
@@ -364,5 +364,5 @@ float* Conv2d::backward(float* del_out, float* input, int input_height, int inpu
 
     err = cudaDeviceReset();
     printf("Partyyyy\n");
-    return (weight_t);
+    return (del_input);
 }

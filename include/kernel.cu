@@ -58,18 +58,34 @@ __global__ void conv_bp_x(float* d_del_input, float* d_del_out, float* d_weight_
 {
 	int tx = blockIdx.x*blockDim.x + threadIdx.x;
 	int ty = blockIdx.y*blockDim.y + threadIdx.y;
-	int tz = blockIdx.z*blockDim.z + threadIdx.z;
+	// int tz = blockIdx.z*blockDim.z + threadIdx.z;
 
+	// for(int i = ty - kernel_size/2; i <= ty + kernel_size/2; i++)
+	// {
+	// 	for(int j = tx - kernel_size/2; j <= tx + kernel_size/2; j++)
+	// 	{
+	// 		if(i < 0 || j < 0 || i >= input_height || j >= input_width)
+	// 			continue;
+	// 		int input_index = (blockIdx.z % channel_in)*(input_height*input_width) + ty*input_width + tx;
+	// 		int out_index = (blockIdx.z / channel_in)*(input_height*input_width) + i*input_width + j;
+	// 		int filter_index = blockIdx.z*kernel_size*kernel_size + (i - ty + kernel_size/2)*kernel_size + j - tx + kernel_size/2;
+	// 		d_del_input[input_index] += d_del_out[out_index]*d_weight_t[filter_index];
+	// 	}
+	// }
 	for(int i = ty - kernel_size/2; i <= ty + kernel_size/2; i++)
 	{
 		for(int j = tx - kernel_size/2; j <= tx + kernel_size/2; j++)
 		{
-			if(i < 0 || j < 0 || i >= img_height || j >= img_width)
+			if(i < 0 || j < 0 || i >= input_height || j >= input_width)
 				continue;
-			int input_index = (blockIdx.z % channel_in)*(input_height*input_width) + ty*input_width + tx;
-			int out_index = (blockIdx.z / channel_in)*(input_height*input_width) + i*input_width + j;
-			int filter_index = blockIdx.z*kernel_size*kernel_size + (i - ty + kernel_size/2)*kernel_size + j - tx + kernel_size/2;
-			d_del_input[input_index] += d_del_out[out_index]*d_weight_t[filter_index];
+			int input_index = (blockIdx.z)*(input_height*input_width) + ty*input_width + tx;
+			for(int k=0; k<channel_out; k++)
+			{
+				int out_index = k*(input_height*input_width) + i*input_width + j;
+				int filter_index = k*kernel_size*kernel_size*channel_in + (i - ty + kernel_size/2)*kernel_size + j - tx + kernel_size/2;
+				d_del_input[input_index] += d_del_out[out_index]*d_weight_t[filter_index];
+			}
 		}
 	}
+
 }
