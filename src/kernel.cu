@@ -1,3 +1,16 @@
+__device__ void 
+matrix_mul(float *d_M, float *d_N, float *d_P , int m, int n, int p)
+{
+	int i = blockIdx.y * blockDim.y + threadIdx.y ;
+	int j = blockIdx.x * blockDim.x + threadIdx.x ;
+	if(( i < m ) && (j < p )){
+		float Pvalue = 0.0;
+		for (int k = 0; k < n ; ++ k){
+			Pvalue += d_M [ i * n + k ]* d_N [ k * p + j ];
+		}
+		d_P [ i * p + j ] = Pvalue ;
+	}
+}
 
 __global__ void 
 maxpool_fp(float *in, float *out, int *mask, int h, int w) // h and w are sizes of in matrix
@@ -37,12 +50,80 @@ __global__ void
 maxpool_bp(float *d_in, float *d_out, int *mask, int h, int w)  // h and w are dim of d_out
 {	
 	int j = blockIdx.x*blockDim.x + threadIdx.x;
-	int i = blockDim.y*blockDim.y + threadIdx.y;
+	int i = blockIdx.y*blockDim.y + threadIdx.y;
 
 	if(i<h && j<w)
 	{
 		d_in[2*i*2*w+j*2+mask[i*w+j]] = d_out[i*w+j];
 	}
-	d_in[0] = mask[i*w+j];
 }
 
+__global__ void
+FC_fp(float *in, float *out, float *w, float *b, int m,int n,int p)
+{
+	// dim3 grid(1,1,1);
+	// dim3 block(p,m,1);
+	// if(threadIdx.x==0)
+	// {
+	// 	matrix_mul(w,in,out,m,n,p); //<<<grid,block>>>
+	// 	// cudaThreadSynchronize();
+	// }	
+
+	int i = blockIdx.y * blockDim.y + threadIdx.y ;
+	int j = blockIdx.x * blockDim.x + threadIdx.x ;
+
+	if(( i < m ) && (j < p )){
+		float Pvalue = 0.0;
+		for (int k = 0; k < n ; ++ k){
+			Pvalue += in[k]* w[i*n+k];
+		}
+		out[ i * p + j ] = Pvalue ;
+	}
+
+	__syncthreads();
+
+	if(i<m && j<p)
+	{
+		out[i*p+j] = out[i*p+j] + b[i];
+	}
+}
+
+__global__ void
+FC_bp(float *d_out, float *w, float *b, float *in, int m,int n,int p)
+{
+	int i = blockIdx.y * blockDim.y + threadIdx.y ;
+	int j = blockIdx.x * blockDim.x + threadIdx.x ;
+
+	
+}
+
+
+
+
+
+// const int TILE_WIDTH = 1;
+
+// __global__ void 
+// matrix_mul(float *d_M, float *d_N, float *d_P, int Width)
+// {
+// 	__shared__ float Mds[TILE_WIDTH][TILE_WIDTH];
+// 	__shared__ float Nds[TILE_WIDTH][TILE_WIDTH];
+// 	int bx = blockIdx.x ;
+// 	int by = blockIdx.y ;
+// 	int tx = threadIdx.x ;
+// 	int ty = threadIdx.y ;
+
+// 	int Row = by * TILE_WIDTH + ty ;
+// 	int Col = bx * TILE_WIDTH + tx ;
+// 	float Pvalue = 0;
+// 	for(int m=0; m<Width/TILE_WIDTH;++m) 
+// 	{
+// 		Mds[ty][tx] = d_M[Row*Width+m*TILE_WIDTH + tx];
+// 		Nds[ty][tx] = d_N[(m*TILE_WIDTH + ty) * Width + Col];
+// 		__syncthreads();
+// 		for(int k = 0; k<TILE_WIDTH; ++k)
+// 			Pvalue += Mds[ty][k] * Nds[k][tx];
+// 		__syncthreads() ;
+// 	}
+// 	d_P[ Row * Width + Col] = Pvalue ;
+// }
