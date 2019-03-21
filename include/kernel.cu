@@ -25,10 +25,10 @@ __global__ void conv_bp(float* d_del_weight, float* d_input, float* d_del_out, i
 {
 	int tx = blockIdx.x*blockDim.x + threadIdx.x;
 	int ty = blockIdx.y*blockDim.y + threadIdx.y;
-	int tz = blockIdx.z*blockDim.z + threadIdx.z;
+	// int tz = blockIdx.z*blockDim.z + threadIdx.z;
 
-	int w_index = blockIdx.z*(kernel_size*kernel_size*channel_in) + threadIdx.z*(kernel_size*kernel_size) + ty*input_width tx;
-	d_del_out[w_index] = 0;
+	int w_index = blockIdx.z*(kernel_size*kernel_size*channel_in) + threadIdx.z*(kernel_size*kernel_size) + ty*kernel_size + tx;
+	d_del_weight[w_index] = 0;
 	
 	for(int i = ty - kernel_size/2; i < ty + input_height - kernel_size/2; i++)
 	{
@@ -41,4 +41,12 @@ __global__ void conv_bp(float* d_del_weight, float* d_input, float* d_del_out, i
 			d_del_weight[w_index] += d_input[input_index]*d_del_out[del_out_index];
 		}
 	}
+	// d_del_weight[0] = d_del_out[0];
+}
+
+__global__ void rotate(float* d_weight_t, float* d_weight, int channel_in, int channel_out, int kernel_size){
+	int tx = blockIdx.x*blockDim.x + threadIdx.x;
+	int ty = blockIdx.y*blockDim.y + threadIdx.y;
+	int tz = blockIdx.z*blockDim.z + threadIdx.z;
+	d_weight_t[tz*kernel_size*kernel_size + ty*kernel_size + tx] = d_weight[tz*kernel_size*kernel_size + (kernel_size-ty - 1)*kernel_size + kernel_size-tx - 1];
 }
