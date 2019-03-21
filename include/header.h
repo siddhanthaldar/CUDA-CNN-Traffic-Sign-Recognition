@@ -12,6 +12,7 @@ public:
 
 	float *weight; //channels_out, channels_in, kernel_size, kernel_size
 	float bias;
+	float* del_weight;
 	int channel_in, channel_out, kernel_size;
 
 	Conv2d(int channel_in, int channel_out, int kernel_size);
@@ -24,26 +25,14 @@ Conv2d::Conv2d(int channel_in, int channel_out, int kernel_size)
 	this->channel_in=channel_in;
 	this->channel_out = channel_out;
 	this->kernel_size = kernel_size;
-	// weight = new float***[channel_out];
-	// for(int i = 0; i < channel_out; i++)
-	// {
-	// 	weight[i] = new float**[channel_in];
-	// 	for(int j = 0; j < kernel_size; j++)
-	// 	{
-	// 		weight[i][j] = new float*[kernel_size];
-	// 		for(int k = 0; k < kernel_size; k++)
-	// 		{
-	// 			weight[i][j][k] = new float[kernel_size];
-	// 			for(int l = 0; l < kernel_size; l++)
-	// 				weight[i][j][k][l] = 0.0; //replace with random
-	// 		}
-	// 	}
-	// }
-	cout<<"\n the weight is: ";
+	// cout<<"\n the weight is: ";
 	weight = new float[channel_out*kernel_size*kernel_size*channel_in]();//Initialize the weights
-	for(int i = 0; i < channel_out*kernel_size*kernel_size*channel_in; i++){
+	del_weight = new float[channel_out*kernel_size*kernel_size*channel_in]();//Initialize the weights
+	for(int i = 0; i < channel_out*kernel_size*kernel_size*channel_in; i++)
+	{
 		weight[i] = 1;//rand()/RAND_MAX;
-		cout<<weight[i]<<" ";
+		del_weight[i] = 0;
+		// cout<<weight[i]<<" ";
 	}
 
 
@@ -178,6 +167,101 @@ float* Conv2d::forward(float* image, int img_height, int img_width)
     if (err != cudaSuccess)
     {
         fprintf(stderr, "Failed to free d_out (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    err = cudaDeviceReset();
+    printf("Partyyyy\n");
+    return (h_out);
+}
+
+
+void Conv2d::backward(float* del_out, float* input, int input_height, int input_width)
+{
+	cudaError_t err = cudaSuccess;
+
+	dim3 grid(1, 1, channel_out);
+	dim3 block(kernel_size, kernel_size, channel_in);
+
+	size_t size_del_input = input_width*input_height*channel_in*sizeof(float);
+	size_t size_del_weight = kernel_size*kernel_size*channel_out*channel_in*sizeof(float);
+	size_t size_del_out = input_height*input_width*channel_out*sizeof(float);
+
+
+	float *d_del_out = NULL;
+	err = cudaMalloc((void **)&d_del_out, size_del_out);
+	if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate d_del_out (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+	float *d_del_weight = NULL;
+	err = cudaMalloc((void **)&d_del_weight, size_del_weight);
+	if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate d_del_weight (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+	float* d_input = NULL;
+	err = cudaMalloc((void **)&d_input, size_del_input);
+	if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate d_out (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+	printf("Copy input feature map from the host memory to the CUDA device\n");
+	err = cudaMemcpy(d_input, input, size_del_input, cudaMemcpyHostToDevice);
+	if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy d_img (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+	printf("Copy input weight filter from the host memory to the CUDA device\n");
+	err = cudaMemcpy(d_del_out, del_out, size_del_out, cudaMemcpyHostToDevice);
+	if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy d_del_out (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+	conv_bp <<<grid, block>>>(d_del_weight, d_input, d_del_out, channel_in, channel_out, kernel_size, input_height, input_width);
+
+	err = cudaGetLastError();
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to launch  kernel (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+	printf("Copy output data from the CUDA device to the host memory\n");
+	err = cudaMemcpy(del_weight, d_del_weight, size_del_weight, cudaMemcpyDeviceToHost);
+	if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy del_weight (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    err = cudaFree(d_del_weight);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free d_del_weight (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    err = cudaFree(d_del_out);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free d_del_out (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+    err = cudaFree(d_input);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free d_input (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
 
