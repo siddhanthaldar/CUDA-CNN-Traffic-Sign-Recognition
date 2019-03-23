@@ -2,6 +2,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <stdio.h>
+#include <math.h>
 
 using namespace std;
 __global__ void conv_fp(float* d_out, float* d_img,float* d_filter,int channel_in,int channel_out,int kernel_size,int img_height,int img_width);
@@ -71,11 +72,12 @@ public:
 	void backward();
 };
 
-class softmax
+class softmax_and_loss
 {
 public:
-	void forward();
-	void backward();
+	float loss;
+	float* forward(float* logits, int label, int n_classes);
+	float* backward(float* out, int label, int n_classes);
 };
 
 class dropout
@@ -86,6 +88,39 @@ public:
 	void backward();
 };
 
+float* softmax_and_loss::forward(float* logits, int label, int n_classes)
+{
+	double sum = 0;
+	float m = 0;
+	for(int i = 0; i < n_classes; i++)
+		m = max(m, logits[i]);
+	for(int i=0; i<n_classes; i++){
+		logits[i] -= m;
+		sum += exp(logits[i]);
+	}
+	float* out = new float[n_classes];
+	for(int i=0; i<n_classes; i++){
+		out[i] = exp(logits[i])/sum;
+	}
+	loss = 0.0;
+	for(int i = 0; i<n_classes; i++){
+		if(i!= label) loss -= log(1-out[i] + 1e-5);
+		else loss -= log(out[i] + 1e-5); 
+	}
+	return (out);
+}
+
+float* softmax_and_loss::backward(float* out, int label, int n_classes){
+	float* del_out = new float[n_classes];
+	for(int i=0; i<n_classes; i++){
+		if(i == label) del_out[i] = out[i]-1;
+		else del_out[i] = out[i];
+	}
+	return(del_out);
+}
+//************************************//
+//Forward propagation for convolution//
+//************************************//
 float* Conv2d::forward(float* image, int img_height, int img_width)
 {
 	cudaError_t err = cudaSuccess;
