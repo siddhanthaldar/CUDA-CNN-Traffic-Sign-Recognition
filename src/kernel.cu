@@ -15,7 +15,10 @@ __global__ void conv_fp(float* d_out, float* d_img,float* d_filter,int channel_i
 			
 			for(int k = 0; k < channel_in; k++)
 			{
-				d_out[t_z*(img_width*img_height) + t_y*img_width + t_x] += d_img[k*(img_width*img_height) + i*img_width + j]*d_filter[t_z*(kernel_size*kernel_size*channel_in) + k*(kernel_size*kernel_size) + i - t_y + kernel_size/2 + j - t_x + kernel_size/2];
+				int out_index = t_z*(img_width*img_height) + t_y*img_width + t_x;
+				int img_index = k*(img_width*img_height) + i*img_width + j;
+				int filter_index = t_z*(kernel_size*kernel_size*channel_in) + k*(kernel_size*kernel_size) + i - t_y + kernel_size/2 + j - t_x + kernel_size/2;
+				d_out[out_index] += d_img[img_index]*d_filter[filter_index];
 			}
 		}
 	}
@@ -25,7 +28,6 @@ __global__ void conv_bp(float* d_del_weight, float* d_input, float* d_del_out, i
 {
 	int tx = blockIdx.x*blockDim.x + threadIdx.x;
 	int ty = blockIdx.y*blockDim.y + threadIdx.y;
-	// int tz = blockIdx.z*blockDim.z + threadIdx.z;
 
 	int w_index = blockIdx.z*(kernel_size*kernel_size*channel_in) + threadIdx.z*(kernel_size*kernel_size) + ty*kernel_size + tx;
 	d_del_weight[w_index] = 0;
@@ -41,7 +43,6 @@ __global__ void conv_bp(float* d_del_weight, float* d_input, float* d_del_out, i
 			d_del_weight[w_index] += d_input[input_index]*d_del_out[del_out_index];
 		}
 	}
-	// d_del_weight[0] = d_del_out[0];
 }
 
 __global__ void rotate(float* d_weight_t, float* d_weight, int channel_in, int channel_out, int kernel_size)
@@ -88,4 +89,21 @@ __global__ void conv_bp_x(float* d_del_input, float* d_del_out, float* d_weight_
 		}
 	}
 
+}
+
+
+
+__global__ void conv_step(float* d_weight, float* d_del_weight, float* d_del_vw, int channel_in, int channel_out, int kernel_size, float l_rate, float beeta, bool is_first)
+{
+	int tx = blockIdx.x*blockDim.x + threadIdx.x;
+	int ty = blockIdx.y*blockDim.y + threadIdx.y;
+	int tz = blockIdx.z*blockDim.z + threadIdx.z;
+
+	int index = blockIdx.z*kernel_size*kernel_size*channel_in + threadIdx.z*kernel_size*kernel_size + threadIdx.y*kernel_size + threadIdx.x;
+	if(is_first)
+		d_del_vw[index] = d_del_weight[index];
+	else
+		d_del_vw[index] = beeta*d_del_vw[index] + (1 - beeta)*d_del_weight[index];
+
+	d_weight[index] -= l_rate*d_del_vw[index];
 }
