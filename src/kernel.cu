@@ -89,16 +89,43 @@ FC_fp(float *in, float *out, float *w, float *b, int m,int n,int p) //m = out_si
 }
 
 __global__ void
-FC_bp(float *d_out, float *w, float *b, float *in, int m,int n,int p)  // same as in fp
+FC_bp(float *d_out, float *d_in, float *w, float *w_transpose,float *dw,float *b,float *db,float *in,int m,int n,int p)  // same as in fp
 {
 	int i = blockIdx.y * blockDim.y + threadIdx.y ;
 	int j = blockIdx.x * blockDim.x + threadIdx.x ;
 
-	// if(i<m && j<p)
-	// {
-		
-	// }
+	if(i<m && j<n)
+	{
+        int index_in  = i*n+j;
+        int index_out = j*m+i;
+        w_transpose[index_out] = w[index_in]; 
+    }
+    __syncthreads();
 
+    if(i<n && j<p){
+		float Pvalue = 0.0;
+		for (int k = 0; k < m ; ++ k){
+			Pvalue += w_transpose[i*m+k] * d_out[k*p + j];
+		}
+		d_in[i*p+j] = Pvalue ;
+	}
+    __syncthreads();
+
+    if(i<m && j<n){
+		float Pvalue = 0.0;
+		for (int k = 0; k < p; ++ k){
+			Pvalue += d_out[i*p+k]* in[k*n+j];
+		}
+		dw[i*n+j] = Pvalue ;
+	}
+    __syncthreads();
+
+    if(i<m && j<p)
+    {
+    	db[i*p+j] = d_out[i*p+j];
+    }
+
+    __syncthreads();
 }
 
 

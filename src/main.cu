@@ -102,7 +102,11 @@ int main()
   int out_size = 2;
   float *in=(float*)malloc(in_size*sizeof(float));
   for(int i=0; i<in_size; i++)
-    in[i] = i;
+    in[i] = i+1;
+
+  float *d_out=(float*)malloc(out_size*sizeof(float));
+  for(int i=0; i<out_size; i++)
+    d_out[i] = i+1;
 
   FC obj(in_size,out_size);
   obj.forward(in, in_size, out_size);
@@ -126,6 +130,24 @@ int main()
   for(int i=0; i<out_size;i++)
     cout<<obj.out[i]<<" ";
   cout<<"\n\n";
+
+  obj.backward(in,d_out,in_size,out_size);
+
+  cout<<"d_in : \n";
+  for(int i=0; i<in_size;i++)
+    cout<<obj.d_in[i]<<" ";
+  cout<<"\n\n";
+
+  cout<<"dW : \n";
+  for(int i=0;i<out_size*in_size;i++)
+    cout<<obj.dw[i]<<"  ";
+  cout<<"\n\n";
+
+  cout<<"db : \n";
+  for(int i=0; i<out_size;i++)
+    cout<<obj.db[i]<<"  ";
+  cout<<"\n\n";
+
 
   return 0;
 }
