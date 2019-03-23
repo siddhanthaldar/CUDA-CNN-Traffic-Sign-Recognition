@@ -95,10 +95,6 @@ __global__ void conv_bp_x(float* d_del_input, float* d_del_out, float* d_weight_
 
 __global__ void conv_step(float* d_weight, float* d_del_weight, float* d_del_vw, int channel_in, int channel_out, int kernel_size, float l_rate, float beeta, bool is_first)
 {
-	int tx = blockIdx.x*blockDim.x + threadIdx.x;
-	int ty = blockIdx.y*blockDim.y + threadIdx.y;
-	int tz = blockIdx.z*blockDim.z + threadIdx.z;
-
 	int index = blockIdx.z*kernel_size*kernel_size*channel_in + threadIdx.z*kernel_size*kernel_size + threadIdx.y*kernel_size + threadIdx.x;
 	if(is_first)
 		d_del_vw[index] = d_del_weight[index];
