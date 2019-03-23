@@ -4,128 +4,90 @@
 
 using namespace std;
 
-// Max pooling
-
-// int h = 4;
-// int w = 4;
+// // ReLU
 
 // int main()
 // {
-//     float *M=(float*)malloc(h*w*sizeof(float));
-//     for(int i=0;i<h*w;i++)
-//    	{
-//    		M[i]=i;
-//    		// cout<<M[i]<<" ";	
-//    	} 
-//    	// cout<<endl;
-
-//     max_pool obj(h,w);
-
-//     obj.forward(M,h,w,1);
-
-//     cout<<"d_out : \n";
-//     float *dM=(float*)malloc(h/2*w/2*sizeof(float));
-//     for(int i=0;i<h/2*w/2;i++)
-//    	{
-//    		dM[i]=i+1;
-//    	  cout<<M[i]<<" ";	
-//    	} 
-//     cout<<"\n\n";
-
-//     cout<<"Mask : \n";
-//     for(int i=0;i<h*w/4;i++)
-//       cout << obj.mask[i] << "  ";
-//     cout<<"\n\n";
-
-//     obj.backward(dM,h/2,w/2);
-
-//     cout<<"d_in : \n";
-//     for(int i=0;i<h*w;i++)
-//       cout << obj.d_in[i] << "  ";
-//     cout<<"\n";
-
-// 	return 0;
-// }
-
-
-// // Matrix multiplication
-
-// int m = 4;
-
-// int main()
-// {
-//   float *M1=(float*)malloc(m*m*sizeof(float)); 
-//   float *M2=(float*)malloc(m*m*sizeof(float)); 
-//   float *M3=(float*)malloc(m*m*sizeof(float));
-
-//   for(int i=0;i<m*m;i++)
+//   int h = 4;
+//   int w = 4;
+//   int channel = 2;
+//   float *in=(float*)malloc(h*w*channel*sizeof(float));
+//   for(int i=0; i<h*w*channel; i++)
 //   {
-//     M1[i] = i+1;
-//     M2[i] = m*m-i;
-//   }
+//   	if(i%2) in[i] = -1.0*i;
+//   	else in[i] = i;
+//   } 
 
-//   cudaError_t err = cudaSuccess;
-//   size_t size;
-//   size = m*m*sizeof(float);
+//   ReLU obj(h,w,channel);
+//   obj.forward(in,h,w,channel);
 
-//   float *d_M1 = NULL;
-//   err = cudaMalloc((void **)&d_M1, size);
+//   cout<<"In : \n";
+//   for(int i=0;i<h*w*channel;i++)
+//     cout<<in[i]<<"  ";
+//   cout<<"\n\n";
 
-//   float *d_M2 = NULL;
-//   err = cudaMalloc((void **)&d_M2, size);
+//   cout<<"Out : \n";
+//   for(int i=0; i<h*w*channel;i++)
+//     cout<<obj.out[i]<<" ";
+//   cout<<"\n\n";
 
-//   float *d_M3 = NULL;
-//   err = cudaMalloc((void **)&d_M3, size);
+//   float *d_out=(float*)malloc(h*w*channel*sizeof(float));
+//   for(int i=0; i<h*w*channel; i++)
+//   {
+//   	d_out[i] = h*w*channel-i;
+//   } 
 
+//   obj.backward(d_out,h,w,channel);
 
-//   err = cudaMemcpy(d_M1, M1, size, cudaMemcpyHostToDevice);
-//   err = cudaMemcpy(d_M2, M2, size, cudaMemcpyHostToDevice);
+//   cout<<"d_in : \n";
+//   for(int i=0; i<h*w*channel;i++)
+//     cout<<obj.d_in[i]<<" ";
+//   cout<<"\n\n";
 
-// // Launch the Vector Add CUDA Kernel
-//   dim3 grid(1,1,1);
-//   dim3 block(4,4,1);  
-//   matrix_mul<<<grid, block>>>(d_M1,d_M2,d_M3,m,m,m);  
-//   err = cudaMemcpy(M3, d_M3, size, cudaMemcpyDeviceToHost);
-
-//   for(int i=0;i<m*m;i++)
-//     cout<<M3[i]<<"  ";
-//   cout<<"\n";
 
 //   return 0;
 // }
 
-// Fully Connected Layer
+// Sigmoid
 
 int main()
 {
-  int in_size = 4;
-  int out_size = 2;
-  float *in=(float*)malloc(in_size*sizeof(float));
-  for(int i=0; i<in_size; i++)
-    in[i] = i;
+  int h = 4;
+  int w = 4;
+  int channel = 2;
+  float *in=(float*)malloc(h*w*channel*sizeof(float));
+  for(int i=0; i<h*w*channel; i++)
+  {
+  	if(i%2) in[i] = -1.0*i;
+  	else in[i] = i;
+  } 
 
-  FC obj(in_size,out_size);
-  obj.forward(in, in_size, out_size);
+  Sigmoid obj(h,w,channel);
+  obj.forward(in,h,w,channel);
 
   cout<<"In : \n";
-  for(int i=0;i<in_size;i++)
+  for(int i=0;i<h*w*channel;i++)
     cout<<in[i]<<"  ";
   cout<<"\n\n";
 
-  cout<<"Weights : \n";
-  for(int i=0;i<out_size*in_size;i++)
-    cout<<obj.weight[i]<<"  ";
-  cout<<"\n\n";
-  
-  cout<<"Bias : \n";
-  for(int i=0; i<out_size;i++)
-    cout<<obj.bias[i]<<"  ";
-  cout<<"\n\n";
-
   cout<<"Out : \n";
-  for(int i=0; i<out_size;i++)
+  for(int i=0; i<h*w*channel;i++)
     cout<<obj.out[i]<<" ";
   cout<<"\n\n";
+
+  float *d_out=(float*)malloc(h*w*channel*sizeof(float));
+  for(int i=0; i<h*w*channel; i++)
+  {
+  	d_out[i] = h*w*channel-i;
+  } 
+
+  obj.backward(d_out,h,w,channel);
+
+  cout<<"d_in : \n";
+  for(int i=0; i<h*w*channel;i++)
+    cout<<obj.d_in[i]<<" ";
+  cout<<"\n\n";
+
 
   return 0;
 }
