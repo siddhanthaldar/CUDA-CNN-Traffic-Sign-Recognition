@@ -25,7 +25,7 @@ public:
 	Conv2d(int channel_in, int channel_out, int kernel_size);
 	float* forward(float* image, int img_width, int img_height);
 	float* backward(float* del_out, float* input, int input_height, int input_width);
-	void step(float l_rate);
+	void step(float l_rate, float beeta=0.9);
 };
 
 Conv2d::Conv2d(int channel_in, int channel_out, int kernel_size)
@@ -41,7 +41,7 @@ Conv2d::Conv2d(int channel_in, int channel_out, int kernel_size)
 
 	for(int i = 0; i < channel_out*kernel_size*kernel_size*channel_in; i++)
 	{
-		weight[i] = rand()/RAND_MAX;
+		weight[i] = rand()*1.0/RAND_MAX;
 		// del_weight[i] = 0;
 		// cout<<weight[i]<<" ";
 	}
@@ -129,9 +129,6 @@ float* Conv2d::forward(float* image, int img_height, int img_width)
 {
 	cudaError_t err = cudaSuccess;
 	float* h_out = new float[img_height*img_width*channel_out];
-	cout<<"\n THe input is: ";
-	for (int i = 0; i<5*5*3;i++)
-		cout<<image[i]<<" ";
 
 	dim3 grid(1,1,channel_out);
 	dim3 block(img_height,img_width,1);
@@ -421,9 +418,9 @@ float* Conv2d::backward(float* del_out, float* input, int input_height, int inpu
 	return (del_input);
 }
 
-void Conv2d::step(float l_rate, float beeta = 0.9)
+void Conv2d::step(float l_rate, float beeta)
 {
-
+	cudaError_t err = cudaSuccess;
 	size_t size_weight = kernel_size*kernel_size*channel_out*channel_in*sizeof(float);
 
 	float *d_weight = NULL;
@@ -435,7 +432,7 @@ void Conv2d::step(float l_rate, float beeta = 0.9)
 	}
 
 	float *d_del_weight = NULL;
-	err = cudaMalloc((void **)&d_weight, size_weight);
+	err = cudaMalloc((void **)&d_del_weight, size_weight);
 	if (err != cudaSuccess)
 	{
 		fprintf(stderr, "Failed to allocate d_weight (error code %s)!\n", cudaGetErrorString(err));
@@ -474,10 +471,10 @@ void Conv2d::step(float l_rate, float beeta = 0.9)
 		exit(EXIT_FAILURE);
 	}
 
-	dim3 grid_t(1,1,channel_out);
-	dim3 block_t(kernel_size, kernel_size, channel_in);
+	dim3 grid(1,1,channel_out);
+	dim3 block(kernel_size, kernel_size, channel_in);
 
-	step_conv <<<grid, block>>>(d_weight, d_del_weight, d_del_vw, channel_in, channel_out, kernel_size, l_rate, beeta, is_first);
+	conv_step<<<grid, block>>>(d_weight, d_del_weight, d_del_vw, channel_in, channel_out, kernel_size, l_rate, beeta, is_first);
 
 	err = cudaGetLastError();
 	if (err != cudaSuccess)
