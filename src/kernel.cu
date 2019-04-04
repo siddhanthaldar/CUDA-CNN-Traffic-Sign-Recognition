@@ -128,6 +128,18 @@ FC_bp(float *d_out, float *d_in, float *w, float *w_transpose,float *dw,float *b
     __syncthreads();
 }
 
+__global__ void
+FC_step(float *w, float *dw, float *dw_old, float *bias, float *db, float *db_old, float lr, float beta, int m, int n, int p)
+{
+	int i = blockIdx.y * blockDim.y + threadIdx.y ;
+	int j = blockIdx.x * blockDim.x + threadIdx.x ;
+
+	dw[i*n+j] = beta * dw[i*n+j] + (1-beta) * dw_old[i*n+j];
+	dw_old[i*n+j] = dw[i*n+j];
+
+	w[i*n+j] += lr*dw[i*n+j];
+
+}
 
 
 

@@ -24,13 +24,15 @@ public:
 
 	float *weight;
 	float *bias;
-    float *dw;
-    float *db;
+    float *dw, *dw_old;
+    float *db, *db_old;
     float *d_in, *out;
+    int in_size, out_size;
 
 	FC(int in_features, int out_features);
-	void forward(float *in, int in_size, int out_size);
-	void backward(float *in,float *d_out,int in_size,int out_size);
+	void forward(float *in);
+	void backward(float *in,float *d_out);
+    void step(float lr, float beta);
 };
 
 class max_pool
@@ -86,23 +88,31 @@ public:
 // 	bias = 0.0;//replace with random
 // }
 
-FC::FC(int in_size,int out_size)
+FC::FC(int in_features, int out_features)
 {
+    in_size = in_features;
+    out_size = out_features;
     weight = (float*)malloc(out_size*in_size*sizeof(float));
     dw = (float*)malloc(out_size*in_size*sizeof(float));
+    dw_old = (float*)malloc(out_size*in_size*sizeof(float));
     for(int i=0;i<out_size*in_size;i++)
+    {
         weight[i] = rand()/(float)RAND_MAX;
+        dw_old[i] = 0;
+    }
 
     bias = (float*)malloc(out_size*sizeof(float));
     db = (float*)malloc(out_size*sizeof(float));
+    db_old = (float*)malloc(out_size*sizeof(float));
     for(int i=0;i<out_size;i++)
         bias[i] = rand()/(float)RAND_MAX;
+
 
     out = (float*)malloc(out_size*sizeof(float));
     d_in = (float*)malloc(in_size*sizeof(float));
 }
 
-void FC::forward(float *in, int in_size, int out_size)
+void FC::forward(float *in)//, int in_size, int out_size)
 {
     cudaError_t err = cudaSuccess;
     size_t size;
@@ -217,7 +227,7 @@ void FC::forward(float *in, int in_size, int out_size)
 
 }
 
-void FC::backward(float *in, float *d_out,int in_size, int out_size)
+void FC::backward(float *in, float *d_out)//,int in_size, int out_size)
 {
     cudaError_t err = cudaSuccess;
     size_t size;
@@ -409,6 +419,118 @@ void FC::backward(float *in, float *d_out,int in_size, int out_size)
         fprintf(stderr, "Failed to free device vector g_in (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
+}
+
+void FC::step(float lr, float beta)
+{
+    cudaError_t err = cudaSuccess;
+    size_t size;
+
+    float *g_w = NULL;   // g stands for GPU
+    size = out_size*in_size*sizeof(float);
+    err = cudaMalloc((void **)&g_w, size);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate device vector g_w (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    float *g_dw = NULL;   // g stands for GPU
+    size = out_size*in_size*sizeof(float);
+    err = cudaMalloc((void **)&g_dw, size);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate device vector g_dw (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    float *g_dw_old = NULL;   // g stands for GPU
+    size = out_size*in_size*sizeof(float);
+    err = cudaMalloc((void **)&g_dw_old, size);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate device vector g_dw_old (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    float *g_b = NULL;   // g stands for GPU
+    size = out_size*sizeof(float);
+    err = cudaMalloc((void **)&g_b, size);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate device vector g_b (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    float *g_db = NULL;   // g stands for GPU
+    size = out_size*sizeof(float);
+    err = cudaMalloc((void **)&g_db, size);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate device vector g_db (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    float *g_db_old = NULL;   // g stands for GPU
+    size = out_size*sizeof(float);
+    err = cudaMalloc((void **)&g_db_old, size);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate device vector g_db_old (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    // Copy to device
+
+    size = out_size*in_size*sizeof(float);
+    err = cudaMemcpy(g_w, weight, size, cudaMemcpyHostToDevice);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector weight from host to device (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    size = out_size*in_size*sizeof(float);
+    err = cudaMemcpy(g_dw, dw, size, cudaMemcpyHostToDevice);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector dw from host to device (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    size = out_size*in_size*sizeof(float);
+    err = cudaMemcpy(g_dw_old, dw_old, size, cudaMemcpyHostToDevice);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector dw_old from host to device (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    size = out_size*sizeof(float);
+    err = cudaMemcpy(g_b, bias, size, cudaMemcpyHostToDevice);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector bias from host to device (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    size = out_size*sizeof(float);
+    err = cudaMemcpy(g_db, db, size, cudaMemcpyHostToDevice);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector db from host to device (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    size = out_size*sizeof(float);
+    err = cudaMemcpy(g_db_old, db_old, size, cudaMemcpyHostToDevice);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector db_old from host to device (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+
 }
 
 max_pool::max_pool(int h, int w)

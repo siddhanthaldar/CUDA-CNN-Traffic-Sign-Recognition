@@ -109,7 +109,7 @@ int main()
     d_out[i] = i+1;
 
   FC obj(in_size,out_size);
-  obj.forward(in, in_size, out_size);
+  obj.forward(in);
 
   cout<<"In : \n";
   for(int i=0;i<in_size;i++)
@@ -131,7 +131,7 @@ int main()
     cout<<obj.out[i]<<" ";
   cout<<"\n\n";
 
-  obj.backward(in,d_out,in_size,out_size);
+  obj.backward(in,d_out);
 
   cout<<"d_in : \n";
   for(int i=0; i<in_size;i++)
