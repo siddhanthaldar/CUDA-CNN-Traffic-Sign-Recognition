@@ -530,7 +530,107 @@ void FC::step(float lr, float beta)
         exit(EXIT_FAILURE);
     }
 
+    // Launch the Vector Add CUDA Kernel
+    // Update weights
+    dim3 grid(out_size,1,1);
+    dim3 block(in_size,1,1);
+    FC_step_w<<<grid, block>>>(g_w,g_dw,g_dw_old,lr,beta,out_size,in_size,1);
 
+    // Update bias
+    dim3 grid1(1,1,1);
+    dim3 block1(out_size,1,1);
+    FC_step_b<<<grid1, block1>>>(g_b,g_db,g_db_old,lr,beta,out_size,in_size,1);
+
+
+    size = out_size*in_size*sizeof(int);
+    err = cudaMemcpy(weight, g_w, size, cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector g_w from device to host (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    size = out_size*in_size*sizeof(int);
+    err = cudaMemcpy(dw, g_dw, size, cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector g_dw from device to host (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    size = out_size*in_size*sizeof(int);
+    err = cudaMemcpy(dw_old, g_dw_old, size, cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector g_dw_old from device to host (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    size = out_size*sizeof(int);
+    err = cudaMemcpy(bias, g_b, size, cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector g_b from device to host (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    size = out_size*sizeof(int);
+    err = cudaMemcpy(db, g_db, size, cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector g_db from device to host (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    size = out_size*sizeof(int);
+    err = cudaMemcpy(db_old, g_db_old, size, cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector g_db_old from device to host (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    err = cudaFree(g_w);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free device vector g_w (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    err = cudaFree(g_dw);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free device vector g_dw (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    err = cudaFree(g_dw_old);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free device vector g_dw_old (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    err = cudaFree(g_b);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free device vector g_b (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    err = cudaFree(g_db);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free device vector g_db (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    err = cudaFree(g_db_old);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free device vector g_db_old (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
 }
 
 max_pool::max_pool(int h, int w)

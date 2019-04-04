@@ -148,6 +148,30 @@ int main()
     cout<<obj.db[i]<<"  ";
   cout<<"\n\n";
 
+  obj.step(0.001,0.9);
+
+  cout<<"After optimizing : \n\n";
+
+  cout<<"dW : \n";
+  for(int i=0;i<out_size*in_size;i++)
+    cout<<obj.dw[i]<<"  ";
+  cout<<"\n\n";
+
+  cout<<"Weights : \n";
+  for(int i=0;i<out_size*in_size;i++)
+    cout<<obj.weight[i]<<"  ";
+  cout<<"\n\n";
+
+  cout<<"db : \n";
+  for(int i=0; i<out_size;i++)
+    cout<<obj.db[i]<<"  ";
+  cout<<"\n\n";
+
+  cout<<"Bias : \n";
+  for(int i=0; i<out_size;i++)
+    cout<<obj.bias[i]<<"  ";
+  cout<<"\n\n";
+
 
   return 0;
 }
