@@ -40,9 +40,9 @@ class max_pool
 public:
 	int *mask; //to remember the location
 	float *out, *d_in;
-    max_pool(int h, int w);
+    max_pool(int h, int w,int channel);
 	void forward(float *in, int h, int w, int channel);
-	void backward(float *d_out, int h, int w);
+	void backward(float *d_out, int h, int w,int channel);
 };
 
 // class ReLU
@@ -633,11 +633,11 @@ void FC::step(float lr, float beta)
     }
 }
 
-max_pool::max_pool(int h, int w)
+max_pool::max_pool(int h, int w,int channel)
 {
-	d_in = (float *)malloc(h*w * sizeof(float));
-	out = (float *)malloc(h/2*w/2 * sizeof(float));
-	mask = (int *)malloc(h/2*w/2 * sizeof(int));
+	d_in = (float *)malloc(h*w *channel* sizeof(float));
+	out = (float *)malloc(h/2*w/2 *channel* sizeof(float));
+	mask = (int *)malloc(h/2*w/2 *channel* sizeof(int));
 }
 
 void max_pool::forward(float *in, int h, int w, int channel)  // h and w are dim of input
@@ -646,7 +646,7 @@ void max_pool::forward(float *in, int h, int w, int channel)  // h and w are dim
 	size_t size;
 
 	float *g_in = NULL;   // g stands for GPU
-	size = h*w*sizeof(float);
+	size = h*w*channel*sizeof(float);
     err = cudaMalloc((void **)&g_in, size);
     if (err != cudaSuccess)
     {
@@ -655,7 +655,7 @@ void max_pool::forward(float *in, int h, int w, int channel)  // h and w are dim
     }
 
 	float *g_out = NULL;   // g stands for GPU
-	size = h/2*w/2*sizeof(float);
+	size = h/2*w/2*channel*sizeof(float);
     err = cudaMalloc((void **)&g_out, size);
     if (err != cudaSuccess)
     {
@@ -664,7 +664,7 @@ void max_pool::forward(float *in, int h, int w, int channel)  // h and w are dim
     }
 
 	int *g_mask = NULL;   // g stands for GPU
-	size = h/2*w/2*sizeof(int);
+	size = h/2*w/2*channel*sizeof(int);
     err = cudaMalloc((void **)&g_mask, size);
     if (err != cudaSuccess)
     {
@@ -672,7 +672,7 @@ void max_pool::forward(float *in, int h, int w, int channel)  // h and w are dim
         exit(EXIT_FAILURE);
     }
 
-    size = h*w*sizeof(float);
+    size = h*w*channel*sizeof(float);
     err = cudaMemcpy(g_in, in, size, cudaMemcpyHostToDevice);
     if (err != cudaSuccess)
     {
@@ -683,8 +683,8 @@ void max_pool::forward(float *in, int h, int w, int channel)  // h and w are dim
 	
 	// Launch the Vector Add CUDA Kernel
     dim3 grid(1,1,1);
-    dim3 block(w/2,h/2,1);  
-	maxpool_fp<<<grid, block>>>(g_in,g_out,g_mask,h,w);  
+    dim3 block(w/2,h/2,channel);  
+	maxpool_fp<<<grid, block>>>(g_in,g_out,g_mask,h,w,channel);  
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
@@ -692,7 +692,7 @@ void max_pool::forward(float *in, int h, int w, int channel)  // h and w are dim
         exit(EXIT_FAILURE);
     }
 
-    size = h/2*w/2*sizeof(int);
+    size = h/2*w/2*channel*sizeof(int);
     err = cudaMemcpy(mask, g_mask, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -700,7 +700,7 @@ void max_pool::forward(float *in, int h, int w, int channel)  // h and w are dim
         exit(EXIT_FAILURE);
     }
 
-	size = h/2*w/2*sizeof(float);
+	size = h/2*w/2*channel*sizeof(float);
     err = cudaMemcpy(out, g_out, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -718,7 +718,7 @@ void max_pool::forward(float *in, int h, int w, int channel)  // h and w are dim
 
     err = cudaFree(g_out);
     if (err != cudaSuccess)
-    {
+    { 
         fprintf(stderr, "Failed to free device vector g_out (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
@@ -732,13 +732,13 @@ void max_pool::forward(float *in, int h, int w, int channel)  // h and w are dim
 
 }
 
-void max_pool::backward(float *d_out, int h, int w)  // h and w are dim of out
+void max_pool::backward(float *d_out, int h, int w,int channel)  // h and w are dim of out
 {
 	cudaError_t err = cudaSuccess;
 	size_t size;
 
 	float *g_d_out = NULL;   // g stands for GPU
-	size = h*w*sizeof(float);
+	size = h*w*channel*sizeof(float);
     err = cudaMalloc((void **)&g_d_out, size);
     if (err != cudaSuccess)
     {
@@ -747,7 +747,7 @@ void max_pool::backward(float *d_out, int h, int w)  // h and w are dim of out
     }
 
 	float *g_d_in = NULL;   // g stands for GPU
-	size = h*2*w*2*sizeof(float);
+	size = h*2*w*2*channel*sizeof(float);
     err = cudaMalloc((void **)&g_d_in, size);
     if (err != cudaSuccess)
     {
@@ -756,7 +756,7 @@ void max_pool::backward(float *d_out, int h, int w)  // h and w are dim of out
     }
 
 	int *g_mask = NULL;   // g stands for GPU
-	size = h*w*sizeof(int);
+	size = h*w*channel*sizeof(int);
     err = cudaMalloc((void **)&g_mask, size);
     if (err != cudaSuccess)
     {
@@ -764,7 +764,7 @@ void max_pool::backward(float *d_out, int h, int w)  // h and w are dim of out
         exit(EXIT_FAILURE);
     }
 
-    size = h*w*sizeof(float);
+    size = h*w*channel*sizeof(float);
     err = cudaMemcpy(g_d_out, d_out, size, cudaMemcpyHostToDevice);
     if (err != cudaSuccess)
     {
@@ -772,7 +772,7 @@ void max_pool::backward(float *d_out, int h, int w)  // h and w are dim of out
         exit(EXIT_FAILURE);
     } 
 
-    size = h*w*sizeof(float);
+    size = h*w*channel*sizeof(float);
     err = cudaMemcpy(g_mask, mask, size, cudaMemcpyHostToDevice);
     if (err != cudaSuccess)
     {
@@ -782,8 +782,8 @@ void max_pool::backward(float *d_out, int h, int w)  // h and w are dim of out
 
 	// Launch the Vector Add CUDA Kernel
     dim3 grid(1,1,1);
-    dim3 block(w,h,1);
-	maxpool_bp<<<grid,block>>>(g_d_in,g_d_out,g_mask,h,w);  
+    dim3 block(w,h,channel);
+	maxpool_bp<<<grid,block>>>(g_d_in,g_d_out,g_mask,h,w,channel);  
 	err = cudaGetLastError();
     if (err != cudaSuccess)
     {
@@ -791,7 +791,7 @@ void max_pool::backward(float *d_out, int h, int w)  // h and w are dim of out
         exit(EXIT_FAILURE);
     }
 
-	size = h*2*w*2*sizeof(float);
+	size = h*2*w*2*channel*sizeof(float);
     err = cudaMemcpy(d_in, g_d_in, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
