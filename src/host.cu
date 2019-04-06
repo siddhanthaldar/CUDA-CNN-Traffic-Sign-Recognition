@@ -15,9 +15,10 @@ int main(void)
         image[i] = i;
     }
 
-    grayscale_transform gray(input_size, input_size, channel_in);
+    preprocessing gray(input_size, input_size, channel_in);
 
     gray.BGR2GRAY(image);
+
     cout<<"Image : \n";
     for(int j=0; j<channel_in; j++){
         for(int i = 0; i<numElements; i++)
@@ -30,6 +31,14 @@ int main(void)
     for(int i = 0; i<numElements; i++)
         cout<<gray.gray_img[i]<<"   ";
     cout<<"\n\n";
+
+    // gray.Histogram_Equalization(gray.gray_img);
+
+    // cout<<"Histogram Equalized Image: \n";
+    // for(int i = 0; i<numElements; i++)
+    //     cout<<gray.hist_img[i]<<"   ";
+    // cout<<"\n\n";
+
 
     return 0;
 

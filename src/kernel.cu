@@ -13,27 +13,27 @@ void bgr2gray(float *in_img, float *gray_img, int h, int w, int channel)
 }
 
 __global__
-void histogram_equalization(float *in_img, int *hist, float *out_img, int h, int w, int num_levels)
+void histogram_equalization(float *in_img, float *out_img, int h, int w, int num_levels)
 {
 	int j = blockIdx.x*blockDim.x + threadIdx.x;
 	int i = blockIdx.y*blockDim.y + threadIdx.y;
 
-	__shared__ int hist[num_levels];
+	__shared__ int hist[256];
 
-	if(i<16 && j<16)
-		hist[i*16+j] = 0;
+	if(i*w+j<num_levels)
+		hist[i*w+j] = 0;
 
 	__syncthreads();
 
 	if(i<h && j<w)
 	{
-		hist[in_img[i*w+j]] += 1;
+		hist[(int)in_img[i*w+j]] += 1;
 	}
 	__syncthreads();
 
-	if(i<16 && j<16)
+	if(i*w+j<num_levels)
 	{
-		hist[i*16+j] = (float)hist[i*16+j]/(h*w) * (num_levels-1);
+		hist[i*w+j] = (float)hist[i*w+j]/(h*w) * (num_levels-1);
 	}
 	__syncthreads();
 
@@ -45,6 +45,6 @@ void histogram_equalization(float *in_img, int *hist, float *out_img, int h, int
 	__syncthreads();
 
 	if(i<h && j<w)
-		out_img[i*w+j] = hist[in_img[i*w+j]];
+		out_img[i*w+j] = hist[(int)in_img[i*w+j]];
 
 }
