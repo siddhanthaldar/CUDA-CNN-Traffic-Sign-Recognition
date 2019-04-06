@@ -1,3 +1,4 @@
+//////////********Actibation Function************////////////////
 __global__ void
 ReLU_fp(float *out, float *in, int h, int w, int channel)
 {
@@ -45,7 +46,7 @@ Sigmoid_bp(float *d_in, float *d_out, float*out, int h, int w, int channel)
 		d_in[i*w*channel+j] = out[i*w*channel+j]*(1-out[i*w*channel+j])*d_out[i*w*channel+j];   //k*w*h+
 	}
 }
-=======
+/////////////**************Convolution*****************//////////
 __global__ void conv_fp(float* d_out, float* d_img,float* d_filter,int channel_in,int channel_out,int kernel_size,int img_height,int img_width){
 	int t_x = blockIdx.x*blockDim.x + threadIdx.x;
 	int t_y = blockIdx.y*blockDim.y + threadIdx.y;
@@ -150,4 +151,143 @@ __global__ void conv_step(float* d_weight, float* d_del_weight, float* d_del_vw,
 		d_del_vw[index] = beeta*d_del_vw[index] + (1 - beeta)*d_del_weight[index];
 
 	d_weight[index] -= l_rate*d_del_vw[index];
+}
+/////////////***********Max Pool and fully connected**********///////////
+__global__ void 
+maxpool_fp(float *in, float *out, int *mask, int h, int w) // h and w are sizes of in matrix
+{	
+	int j = blockIdx.x*blockDim.x + threadIdx.x;
+	int i = blockIdx.y*blockDim.y + threadIdx.y;
+
+	// Mask contains position from where the value is obtained
+	// 0 -> (0,0), 1 -> (0,1), 2 -> (1,0), 3 -> (1,1)
+	if(i<h/2 && j<w/2)
+	{		
+		out[i*w/2+j] = in[2*i*w+j*2];
+		mask[i*w/2+j] = 0;
+
+		if(out[i*w/2+j]<in[2*i*w+j*2+1])
+		{
+			out[i*w/2+j] = in[2*i*w+j*2+1];
+			mask[i*w/2+j] = 1;
+		}
+
+		if(out[i*w/2+j]<in[(2*i+1)*w+j*2])
+		{
+			out[i*w/2+j] = in[(2*i+1)*w+j*2];
+			mask[i*w/2+j] = w;
+		}
+
+		if(out[i*w/2+j]<in[(2*i+1)*w+j*2+1])
+		{
+			out[i*w/2+j] = in[(2*i+1)*w+j*2+1];
+			mask[i*w/2+j] = w+1;
+		}
+
+	}
+}
+__global__ void 
+maxpool_bp(float *d_in, float *d_out, int *mask, int h, int w)  // h and w are dim of d_out
+{	
+	int j = blockIdx.x*blockDim.x + threadIdx.x;
+	int i = blockIdx.y*blockDim.y + threadIdx.y;
+
+	if(i<h && j<w)
+	{
+		d_in[2*i*2*w+j*2+mask[i*w+j]] = d_out[i*w+j];
+	}
+}
+
+__global__ void
+FC_fp(float *in, float *out, float *w, float *b, int m,int n,int p) //m = out_size, n = in_size, p = num _data
+{
+	// dim3 grid(1,1,1);
+	// dim3 block(p,m,1);
+	// if(threadIdx.x==0)
+	// {
+	// 	matrix_mul(w,in,out,m,n,p); //<<<grid,block>>>
+	// 	// cudaThreadSynchronize();
+	// }	
+
+	int i = blockIdx.y * blockDim.y + threadIdx.y ;
+	int j = blockIdx.x * blockDim.x + threadIdx.x ;
+
+	if(( i < m ) && (j < p )){
+		float Pvalue = 0.0;
+		for (int k = 0; k < n ; ++ k){
+			Pvalue += in[k]* w[i*n+k];
+		}
+		out[ i * p + j ] = Pvalue ;
+	}
+
+	__syncthreads();
+
+	if(i<m && j<p)
+	{
+		out[i*p+j] = out[i*p+j] + b[i];
+	}
+}
+
+__global__ void
+FC_bp(float *d_out, float *d_in, float *w, float *w_transpose,float *dw,float *b,float *db,float *in,int m,int n,int p)  // same as in fp
+{
+	int i = blockIdx.y * blockDim.y + threadIdx.y ;
+	int j = blockIdx.x * blockDim.x + threadIdx.x ;
+
+	if(i<m && j<n)
+	{
+        int index_in  = i*n+j;
+        int index_out = j*m+i;
+        w_transpose[index_out] = w[index_in]; 
+    }
+    __syncthreads();
+
+    if(i<n && j<p){
+		float Pvalue = 0.0;
+		for (int k = 0; k < m ; ++ k){
+			Pvalue += w_transpose[i*m+k] * d_out[k*p + j];
+		}
+		d_in[i*p+j] = Pvalue ;
+	}
+    __syncthreads();
+
+    if(i<m && j<n){
+		float Pvalue = 0.0;
+		for (int k = 0; k < p; ++ k){
+			Pvalue += d_out[i*p+k]* in[k*n+j];
+		}
+		dw[i*n+j] = Pvalue ;
+	}
+    __syncthreads();
+
+    if(i<m && j<p)
+    {
+    	db[i*p+j] = d_out[i*p+j];
+    }
+
+    __syncthreads();
+}
+
+__global__ void
+FC_step_w(float *w, float *dw, float *dw_old, float lr, float beta, int m, int n, int p)
+{
+	int i = blockIdx.y * blockDim.y + threadIdx.y ;
+	int j = blockIdx.x * blockDim.x + threadIdx.x ;
+
+	dw[i*n+j] = beta * dw[i*n+j] + (1-beta) * dw_old[i*n+j];
+	dw_old[i*n+j] = dw[i*n+j];
+
+	w[i*n+j] -= lr*dw[i*n+j];
+
+}
+
+__global__ void
+FC_step_b(float *bias, float *db, float *db_old, float lr, float beta, int m, int n, int p)
+{
+	int i = blockIdx.y * blockDim.y + threadIdx.y ;
+	int j = blockIdx.x * blockDim.x + threadIdx.x ;
+
+	db[i*n+j] = beta * db[i*n+j] + (1-beta) * db_old[i*n+j];
+	db_old[i*n+j] = db[i*n+j];
+	bias[i*n+j] -= lr*db[i*n+j];
 }
