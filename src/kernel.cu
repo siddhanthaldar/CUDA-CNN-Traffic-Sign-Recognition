@@ -54,3 +54,36 @@ __global__ void calcCDF(float* in_img , float* out_img, int h, int w, int num_le
 	if(i<h && j<w)
 	 	out_img[i*w+j] = (int)cdf[(int)in_img[i*w+j]];
 }
+__global__ void negative_transformation(float *in_img, float* out_img, int h, int w, int num_levels)
+{
+	int j = blockIdx.x*blockDim.x + threadIdx.x;
+	int i = blockIdx.y*blockDim.y + threadIdx.y;
+	
+	if(i < h && j < w)
+	{
+		out_img[i*w+j] = (int)((num_levels-1) - in_img[i*w + j]); 
+	}
+
+}
+
+__global__ void log_transformation(float *in_img, float* out_img, int h, int w, int num_levels, float param)
+{
+	int j = blockIdx.x*blockDim.x + threadIdx.x;
+	int i = blockIdx.y*blockDim.y + threadIdx.y;
+
+	if(i < h && j < w )
+	{
+		out_img[i*w+j] = int(param * log(1+in_img[i*w+j])); 
+	}
+}
+
+__global__ void gamma_transformation(float *in_img, float* out_img, int h, int w, int num_levels, float gamma)
+{
+	int j = blockIdx.x*blockDim.x + threadIdx.x;
+	int i = blockIdx.y*blockDim.y + threadIdx.y;
+
+	if( i < h && j < w)
+	{
+		out_img[i*w+j] = int(255 * pow( ((in_img[i*w+j])/255) , gamma));
+	}
+}
