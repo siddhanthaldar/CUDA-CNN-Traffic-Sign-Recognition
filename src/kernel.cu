@@ -47,7 +47,8 @@ Sigmoid_bp(float *d_in, float *d_out, float*out, int h, int w, int channel)
 	}
 }
 /////////////**************Convolution*****************//////////
-__global__ void conv_fp(float* d_out, float* d_img,float* d_filter,int channel_in,int channel_out,int kernel_size,int img_height,int img_width){
+__global__ void conv_fp(float* d_out, float* d_img,float* d_filter,int channel_in,int channel_out,int kernel_size,int img_height,int img_width)
+{
 	int t_x = blockIdx.x*blockDim.x + threadIdx.x;
 	int t_y = blockIdx.y*blockDim.y + threadIdx.y;
 	int t_z = blockIdx.z*blockDim.z + threadIdx.z;
@@ -73,7 +74,8 @@ __global__ void conv_fp(float* d_out, float* d_img,float* d_filter,int channel_i
 	}
 }
 
-__global__ void conv_bp(float* d_del_weight, float* d_input, float* d_del_out, int channel_in,int channel_out,int kernel_size,int input_height,int input_width)
+__global__ 
+void conv_bp(float* d_del_weight, float* d_input, float* d_del_out, int channel_in,int channel_out,int kernel_size,int input_height,int input_width)
 {
 	int tx = blockIdx.x*blockDim.x + threadIdx.x;
 	int ty = blockIdx.y*blockDim.y + threadIdx.y;
@@ -94,7 +96,8 @@ __global__ void conv_bp(float* d_del_weight, float* d_input, float* d_del_out, i
 	}
 }
 
-__global__ void rotate(float* d_weight_t, float* d_weight, int channel_in, int channel_out, int kernel_size)
+__global__ 
+void rotate(float* d_weight_t, float* d_weight, int channel_in, int channel_out, int kernel_size)
 {
 	int tx = blockIdx.x*blockDim.x + threadIdx.x;
 	int ty = blockIdx.y*blockDim.y + threadIdx.y;
@@ -104,7 +107,8 @@ __global__ void rotate(float* d_weight_t, float* d_weight, int channel_in, int c
 }
 
 
-__global__ void conv_bp_x(float* d_del_input, float* d_del_out, float* d_weight_t, int channel_in,int channel_out,int kernel_size,int input_height,int input_width)
+__global__ 
+void conv_bp_x(float* d_del_input, float* d_del_out, float* d_weight_t, int channel_in,int channel_out,int kernel_size,int input_height,int input_width)
 {
 	int tx = blockIdx.x*blockDim.x + threadIdx.x;
 	int ty = blockIdx.y*blockDim.y + threadIdx.y;
@@ -142,7 +146,8 @@ __global__ void conv_bp_x(float* d_del_input, float* d_del_out, float* d_weight_
 
 
 
-__global__ void conv_step(float* d_weight, float* d_del_weight, float* d_del_vw, int channel_in, int channel_out, int kernel_size, float l_rate, float beeta, bool is_first)
+__global__ 
+void conv_step(float* d_weight, float* d_del_weight, float* d_del_vw, int channel_in, int channel_out, int kernel_size, float l_rate, float beeta, bool is_first)
 {
 	int index = blockIdx.z*kernel_size*kernel_size*channel_in + threadIdx.z*kernel_size*kernel_size + threadIdx.y*kernel_size + threadIdx.x;
 	if(is_first)
