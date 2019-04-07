@@ -3,7 +3,7 @@
 int main(void)
 {
 	cout<<"Convolution and update"<<endl;
-	int input_size = 3;
+	int input_size = 6;
 
 	float* img = new float[input_size*input_size*3];
 	for(int i = 0; i < input_size*input_size*3; i++)
@@ -19,8 +19,9 @@ int main(void)
 	Conv2d C2(3, 1, 3);
 
 	ReLU R1(input_size, input_size, 3);
-	FC F1(input_size*input_size, 12);
+	FC F1(input_size*input_size/4, 12);
 	FC F2(12, 2);
+	max_pool M1(input_size, input_size, 3);	
 	softmax_and_loss S;
 
 	for(int epoch = 0; epoch < 100; epoch++)
@@ -32,7 +33,11 @@ int main(void)
 		R1.forward(out_C1, input_size, input_size, 3);
 		float* out_R1 = R1.out;
 
-		float* out_C2 = C2.forward(out_R1, input_size, input_size);
+		M1.forward(out_R1, input_size, input_size, 3);
+		float* out_M1 = M1.out;
+		// for(int i = 0; i < (input_size*input_size*3)/4; i++)
+		// 	cout<<out_M1[i]<<' ';
+		float* out_C2 = C2.forward(out_M1, input_size/2, input_size/2);
 
 		F1.forward(out_C2);
 		float* out_F1 = F1.out;
@@ -51,7 +56,9 @@ int main(void)
 		del_out = F2.d_in;
 		F1.backward(out_C2, del_out);
 		del_out = F1.d_in;
-		del_out = C2.backward(del_out, out_R1, input_size, input_size);
+		del_out = C2.backward(del_out, out_R1, input_size/2, input_size/2);
+		M1.backward(del_out, input_size/2, input_size/2, 3);
+		del_out = M1.d_in;
 		R1.backward(del_out, input_size, input_size, 3);
 		del_out = R1.d_in;
 		del_out = C1.backward(del_out, img, input_size, 3);
