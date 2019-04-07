@@ -4,48 +4,53 @@
 
 using namespace std;
 
-// Max pooling
+int h = 4;
+int w = 4;
+int channel = 3;
 
-// int h = 4;
-// int w = 4;
+int main()
+{
+    float *M=(float*)malloc(h*w*channel*sizeof(float));
+    cout << "in: " << endl;
+    for(int i=0;i<h*w*channel;i++)
+    {
+      M[i]=rand()/(float)RAND_MAX;
+      cout<<M[i]<<" ";  
+    } 
+    cout<<endl;
 
-// int main()
-// {
-//     float *M=(float*)malloc(h*w*sizeof(float));
-//     for(int i=0;i<h*w;i++)
-//    	{
-//    		M[i]=i;
-//    		// cout<<M[i]<<" ";	
-//    	} 
-//    	// cout<<endl;
+    max_pool obj(h,w,channel);
 
-//     max_pool obj(h,w);
+    obj.forward(M,h,w,channel);
+    cout << "out:" << endl;
+    for(int i=0;i<h/2*w/2*channel;i++)
+    {
+      cout << obj.out[i] << " "; 
+    } 
+    cout << endl;
+    cout<<"d_out : \n";
+    float *dM=(float*)malloc(h/2*w/2*channel*sizeof(float));
+    for(int i=0;i<h/2*w/2*channel;i++)
+    {
+      dM[i]=i+1;
+      cout<<dM[i]<<" "; 
+    } 
+    cout<<"\n\n";
 
-//     obj.forward(M,h,w,1);
+    cout<<"Mask : \n";
+    for(int i=0;i<h*w/4*channel;i++)
+      cout << obj.mask[i] << "  ";
+    cout<<"\n\n";
 
-//     cout<<"d_out : \n";
-//     float *dM=(float*)malloc(h/2*w/2*sizeof(float));
-//     for(int i=0;i<h/2*w/2;i++)
-//    	{
-//    		dM[i]=i+1;
-//    	  cout<<M[i]<<" ";	
-//    	} 
-//     cout<<"\n\n";
+    obj.backward(dM,h/2,w/2,channel);
 
-//     cout<<"Mask : \n";
-//     for(int i=0;i<h*w/4;i++)
-//       cout << obj.mask[i] << "  ";
-//     cout<<"\n\n";
+    cout<<"d_in : \n";
+    for(int i=0;i<h*w*channel;i++)
+      cout << obj.d_in[i] << "  ";
+    cout<<"\n";
 
-//     obj.backward(dM,h/2,w/2);
-
-//     cout<<"d_in : \n";
-//     for(int i=0;i<h*w;i++)
-//       cout << obj.d_in[i] << "  ";
-//     cout<<"\n";
-
-// 	return 0;
-// }
+  return 0;
+}
 
 
 // // Matrix multiplication
@@ -96,82 +101,82 @@ using namespace std;
 
 // Fully Connected Layer
 
-int main()
-{
-  int in_size = 4;
-  int out_size = 2;
-  float *in=(float*)malloc(in_size*sizeof(float));
-  for(int i=0; i<in_size; i++)
-    in[i] = i+1;
+// int main()
+// {
+//   int in_size = 4;
+//   int out_size = 2;
+//   float *in=(float*)malloc(in_size*sizeof(float));
+//   for(int i=0; i<in_size; i++)
+//     in[i] = i+1;
 
-  float *d_out=(float*)malloc(out_size*sizeof(float));
-  for(int i=0; i<out_size; i++)
-    d_out[i] = i+1;
+//   float *d_out=(float*)malloc(out_size*sizeof(float));
+//   for(int i=0; i<out_size; i++)
+//     d_out[i] = i+1;
 
-  FC obj(in_size,out_size);
-  obj.forward(in);
+//   FC obj(in_size,out_size);
+//   obj.forward(in);
 
-  cout<<"In : \n";
-  for(int i=0;i<in_size;i++)
-    cout<<in[i]<<"  ";
-  cout<<"\n\n";
+//   cout<<"In : \n";
+//   for(int i=0;i<in_size;i++)
+//     cout<<in[i]<<"  ";
+//   cout<<"\n\n";
 
-  cout<<"Weights : \n";
-  for(int i=0;i<out_size*in_size;i++)
-    cout<<obj.weight[i]<<"  ";
-  cout<<"\n\n";
+//   cout<<"Weights : \n";
+//   for(int i=0;i<out_size*in_size;i++)
+//     cout<<obj.weight[i]<<"  ";
+//   cout<<"\n\n";
   
-  cout<<"Bias : \n";
-  for(int i=0; i<out_size;i++)
-    cout<<obj.bias[i]<<"  ";
-  cout<<"\n\n";
+//   cout<<"Bias : \n";
+//   for(int i=0; i<out_size;i++)
+//     cout<<obj.bias[i]<<"  ";
+//   cout<<"\n\n";
 
-  cout<<"Out : \n";
-  for(int i=0; i<out_size;i++)
-    cout<<obj.out[i]<<" ";
-  cout<<"\n\n";
+//   cout<<"Out : \n";
+//   for(int i=0; i<out_size;i++)
+//     cout<<obj.out[i]<<" ";
+//   cout<<"\n\n";
 
-  obj.backward(in,d_out);
+//   obj.backward(in,d_out);
 
-  cout<<"d_in : \n";
-  for(int i=0; i<in_size;i++)
-    cout<<obj.d_in[i]<<" ";
-  cout<<"\n\n";
+//   cout<<"d_in : \n";
+//   for(int i=0; i<in_size;i++)
+//     cout<<obj.d_in[i]<<" ";
+//   cout<<"\n\n";
 
-  cout<<"dW : \n";
-  for(int i=0;i<out_size*in_size;i++)
-    cout<<obj.dw[i]<<"  ";
-  cout<<"\n\n";
+//   cout<<"dW : \n";
+//   for(int i=0;i<out_size*in_size;i++)
+//     cout<<obj.dw[i]<<"  ";
+//   cout<<"\n\n";
 
-  cout<<"db : \n";
-  for(int i=0; i<out_size;i++)
-    cout<<obj.db[i]<<"  ";
-  cout<<"\n\n";
+//   cout<<"db : \n";
+//   for(int i=0; i<out_size;i++)
+//     cout<<obj.db[i]<<"  ";
+//   cout<<"\n\n";
 
-  obj.step(0.001,0.9);
+//   obj.step(0.001,0.9);
 
-  cout<<"After optimizing : \n\n";
+//   cout<<"After optimizing : \n\n";
 
-  cout<<"dW : \n";
-  for(int i=0;i<out_size*in_size;i++)
-    cout<<obj.dw[i]<<"  ";
-  cout<<"\n\n";
+//   cout<<"dW : \n";
+//   for(int i=0;i<out_size*in_size;i++)
+//     cout<<obj.dw[i]<<"  ";
+//   cout<<"\n\n";
 
-  cout<<"Weights : \n";
-  for(int i=0;i<out_size*in_size;i++)
-    cout<<obj.weight[i]<<"  ";
-  cout<<"\n\n";
+//   cout<<"Weights : \n";
+//   for(int i=0;i<out_size*in_size;i++)
+//     cout<<obj.weight[i]<<"  ";
+//   cout<<"\n\n";
 
-  cout<<"db : \n";
-  for(int i=0; i<out_size;i++)
-    cout<<obj.db[i]<<"  ";
-  cout<<"\n\n";
+//   cout<<"db : \n";
+//   for(int i=0; i<out_size;i++)
+//     cout<<obj.db[i]<<"  ";
+//   cout<<"\n\n";
 
-  cout<<"Bias : \n";
-  for(int i=0; i<out_size;i++)
-    cout<<obj.bias[i]<<"  ";
-  cout<<"\n\n";
+//   cout<<"Bias : \n";
+//   for(int i=0; i<out_size;i++)
+//     cout<<obj.bias[i]<<"  ";
+//   cout<<"\n\n";
 
 
-  return 0;
-}
+//   return 0;
+// }
