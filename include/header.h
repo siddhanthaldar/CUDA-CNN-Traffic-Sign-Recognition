@@ -66,8 +66,8 @@ public:
     int in_size, out_size,first;
 
     FC(int in_features, int out_features);
-    void forward(float *in);
-    void backward(float *in,float *d_out);
+    float* forward(float *in);
+    float* backward(float *in,float *d_out);
     void step(float lr, float beta);
 };
 
@@ -78,8 +78,8 @@ public:
     int *mask; //to remember the location
     float *out, *d_in;
     max_pool(int h, int w,int channel);
-    void forward(float *in, int h, int w, int channel);
-    void backward(float *d_out, int h, int w,int channel);
+    float* forward(float *in, int h, int w, int channel);
+    float* backward(float *d_out, int h, int w,int channel);
 };
 
 
@@ -88,8 +88,8 @@ class ReLU
 public:
     float *out,*d_in;
     ReLU(int h, int w, int channel);
-	void forward(float *in, int h, int w, int channel);
-	void backward(float* d_out, int h, int w, int channel);
+	float* forward(float *in, int h, int w, int channel);
+	float* backward(float* d_out, int h, int w, int channel);
 };
 
 class Sigmoid
@@ -107,7 +107,7 @@ ReLU::ReLU(int h, int w, int channel)
     d_in = (float*)malloc(h*w*channel*sizeof(float));
 }
 
-void ReLU::forward(float *in, int h, int w, int channel)
+float* ReLU::forward(float *in, int h, int w, int channel)
 {
     cudaError_t err = cudaSuccess;
     size_t size;
@@ -171,9 +171,10 @@ void ReLU::forward(float *in, int h, int w, int channel)
         fprintf(stderr, "Failed to free device vector g_out (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
+    return out;
 }
 
-void ReLU::backward(float* d_out, int h, int w, int channel)
+float* ReLU::backward(float* d_out, int h, int w, int channel)
 {
     cudaError_t err = cudaSuccess;
     size_t size;
@@ -254,7 +255,7 @@ void ReLU::backward(float* d_out, int h, int w, int channel)
         fprintf(stderr, "Failed to free device vector g_d_out (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
-
+    return d_in;
 }
 
 // ******************************************************************************************************************
@@ -897,7 +898,7 @@ FC::FC(int in_features, int out_features)
     d_in = (float*)malloc(in_size*sizeof(float));
 }
 
-void FC::forward(float *in)//, int in_size, int out_size)
+float* FC::forward(float *in)//, int in_size, int out_size)
 {
     cudaError_t err = cudaSuccess;
     size_t size;
@@ -1009,10 +1010,11 @@ void FC::forward(float *in)//, int in_size, int out_size)
         fprintf(stderr, "Failed to free device vector g_b (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
+    return out;
 
 }
 
-void FC::backward(float *in, float *d_out)//,int in_size, int out_size)
+float* FC::backward(float *in, float *d_out)//,int in_size, int out_size)
 {
     cudaError_t err = cudaSuccess;
     size_t size;
@@ -1204,6 +1206,7 @@ void FC::backward(float *in, float *d_out)//,int in_size, int out_size)
         fprintf(stderr, "Failed to free device vector g_in (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
+    return d_in;
 }
 
 void FC::step(float lr, float beta)
@@ -1427,7 +1430,7 @@ max_pool::max_pool(int h, int w,int channel)
     mask = (int *)malloc(h/2*w/2 *channel* sizeof(int));
 }
 
-void max_pool::forward(float *in, int h, int w, int channel)  // h and w are dim of input
+float* max_pool::forward(float *in, int h, int w, int channel)  // h and w are dim of input
 {
     cudaError_t err = cudaSuccess;
     size_t size;
@@ -1516,10 +1519,10 @@ void max_pool::forward(float *in, int h, int w, int channel)  // h and w are dim
         fprintf(stderr, "Failed to free device vector g_mask (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
-
+    return out;
 }
 
-void max_pool::backward(float *d_out, int h, int w,int channel)  // h and w are dim of out
+float* max_pool::backward(float *d_out, int h, int w,int channel)  // h and w are dim of out
 {
     cudaError_t err = cudaSuccess;
     size_t size;
@@ -1607,4 +1610,5 @@ void max_pool::backward(float *d_out, int h, int w,int channel)  // h and w are 
         fprintf(stderr, "Failed to free device vector g_mask (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
+    return d_in;
 }
