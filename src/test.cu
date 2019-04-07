@@ -21,8 +21,8 @@ int main(void)
 	ReLU R1(input_size, input_size, 3);
 	FC F1(input_size*input_size/4, 12);
 	FC F2(12, 2);
-	max_pool M1(input_size, input_size, 3);	
-	softmax_and_loss S;
+	MaxPool M1(input_size, input_size, 3);	
+	softmax_cross_entropy_with_logits S;
 
 	for(int epoch = 0; epoch < 100; epoch++)
 	{
@@ -41,19 +41,19 @@ int main(void)
 
 		float* out_F2 = F2.forward(out_F1);
 
-		float* out_S = S.forward(out_F2, 1, 2);
+		float* out_S = S.forward(out_F2, 0, 2);
 		float loss = S.loss;
 		cout<<"Epoch : "<<epoch<<' '<<"Out : "<<out_S[0]<<' '<<out_S[1]<<endl;
 		cout<<"Loss : "<<loss<<endl;
 
 
-		float* del_out = S.backward(out_S, 1, 2);
+		float* del_out = S.backward(out_S, 0, 2);
 		del_out = F2.backward(out_F1, del_out);
 		del_out = F1.backward(out_C2, del_out);
 		del_out = C2.backward(del_out, out_R1, input_size/2, input_size/2);
 		del_out = M1.backward(del_out, input_size/2, input_size/2, 3);
 		del_out = R1.backward(del_out, input_size, input_size, 3);
-		del_out = C1.backward(del_out, img, input_size, 3);
+		del_out = C1.backward(del_out, img, input_size, input_size);
 
 		// for(int i = 0; i < 2; i++)
 		// 	cout<<F2.db[i]<<' ';

@@ -5,8 +5,8 @@
 #include <stdio.h>
 #include <math.h>
 
-
 using namespace std;
+
 __global__ void conv_fp(float* d_out, float* d_img,float* d_filter,int channel_in,int channel_out,int kernel_size,int img_height,int img_width);
 __global__ void conv_bp(float* d_del_weight, float* d_input, float* d_del_out, int channel_in,int channel_out,int kernel_size,int input_height,int input_width);
 __global__ void rotate(float* d_weight_t, float* d_weight, int channel_in, int channel_out, int kernel_size);
@@ -72,12 +72,12 @@ public:
 };
 
 
-class max_pool
+class MaxPool
 {
 public:
     int *mask; //to remember the location
     float *out, *d_in;
-    max_pool(int h, int w,int channel);
+    MaxPool(int h, int w,int channel);
     float* forward(float *in, int h, int w, int channel);
     float* backward(float *d_out, int h, int w,int channel);
 };
@@ -416,7 +416,7 @@ void Sigmoid::backward(float* d_out, int h, int w, int channel)
 
 }
   //*************************************************************************************************************
-class softmax_and_loss
+class softmax_cross_entropy_with_logits
 {
 public:
 	float loss;
@@ -432,7 +432,7 @@ public:
 	void backward();
 };
 
-float* softmax_and_loss::forward(float* logits, int label, int n_classes)
+float* softmax_cross_entropy_with_logits::forward(float* logits, int label, int n_classes)
 {
 	double sum = 0;
 	float m = INT_MIN;
@@ -454,7 +454,7 @@ float* softmax_and_loss::forward(float* logits, int label, int n_classes)
 	return out;
 }
 
-float* softmax_and_loss::backward(float* out, int label, int n_classes){
+float* softmax_cross_entropy_with_logits::backward(float* out, int label, int n_classes){
 	float* del_out = new float[n_classes];
 	for(int i=0; i<n_classes; i++){
 		if(i == label) del_out[i] = out[i]-1;
@@ -567,8 +567,8 @@ float* Conv2d::forward(float* image, int img_height, int img_width)
 float* Conv2d::backward(float* del_out, float* input, int input_height, int input_width)
 {
 	cudaError_t err = cudaSuccess;
-	dim3 grid(1, 1, channel_out);
-	dim3 block(kernel_size, kernel_size, channel_in);
+	dim3 grid(kernel_size, kernel_size, channel_out);
+	dim3 block(1, 1, channel_in);
 
 	size_t size_del_input = input_width*input_height*channel_in*sizeof(float);
 	size_t size_del_weight = kernel_size*kernel_size*channel_out*channel_in*sizeof(float);
@@ -667,8 +667,8 @@ float* Conv2d::backward(float* del_out, float* input, int input_height, int inpu
 		exit(EXIT_FAILURE);
 	}
 
-	dim3 grid_t(1,1,channel_out);
-	dim3 block_t(kernel_size, kernel_size, channel_in);
+	dim3 grid_t(kernel_size,kernel_size,channel_out);
+	dim3 block_t(1, 1, channel_in);
 
 
 	//************************************//
@@ -1423,14 +1423,14 @@ void FC::step(float lr, float beta)
 }
 
 
-max_pool::max_pool(int h, int w,int channel)
+MaxPool::MaxPool(int h, int w,int channel)
 {
     d_in = (float *)malloc(h*w *channel* sizeof(float));
     out = (float *)malloc(h/2*w/2 *channel* sizeof(float));
     mask = (int *)malloc(h/2*w/2 *channel* sizeof(int));
 }
 
-float* max_pool::forward(float *in, int h, int w, int channel)  // h and w are dim of input
+float* MaxPool::forward(float *in, int h, int w, int channel)  // h and w are dim of input
 {
     cudaError_t err = cudaSuccess;
     size_t size;
@@ -1472,8 +1472,8 @@ float* max_pool::forward(float *in, int h, int w, int channel)  // h and w are d
 
     
     // Launch the Vector Add CUDA Kernel
-    dim3 grid(1,1,1);
-    dim3 block(w/2,h/2,channel);  
+    dim3 grid(1,1,channel);
+    dim3 block(w/2,h/2,1);  
     maxpool_fp<<<grid, block>>>(g_in,g_out,g_mask,h,w,channel);  
     err = cudaGetLastError();
     if (err != cudaSuccess)
@@ -1522,7 +1522,7 @@ float* max_pool::forward(float *in, int h, int w, int channel)  // h and w are d
     return out;
 }
 
-float* max_pool::backward(float *d_out, int h, int w,int channel)  // h and w are dim of out
+float* MaxPool::backward(float *d_out, int h, int w,int channel)  // h and w are dim of out
 {
     cudaError_t err = cudaSuccess;
     size_t size;
@@ -1571,8 +1571,8 @@ float* max_pool::backward(float *d_out, int h, int w,int channel)  // h and w ar
     } 
 
     // Launch the Vector Add CUDA Kernel
-    dim3 grid(1,1,1);
-    dim3 block(w,h,channel);
+    dim3 grid(1,1,channel);
+    dim3 block(w,h,1);
     maxpool_bp<<<grid,block>>>(g_d_in,g_d_out,g_mask,h,w,channel);  
     err = cudaGetLastError();
     if (err != cudaSuccess)
