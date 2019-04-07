@@ -271,25 +271,30 @@ FC_bp(float *d_out, float *d_in, float *w, float *w_transpose,float *dw,float *b
 }
 
 __global__ void
-FC_step_w(float *w, float *dw, float *dw_old, float lr, float beta, int m, int n, int p)
+FC_step_w(float *w, float *dw, float *dw_old, float lr, float beta, int m, int n, int p,int first)
 {
 	int i = blockIdx.y * blockDim.y + threadIdx.y ;
 	int j = blockIdx.x * blockDim.x + threadIdx.x ;
 
-	dw[i*n+j] = beta * dw[i*n+j] + (1-beta) * dw_old[i*n+j];
-	dw_old[i*n+j] = dw[i*n+j];
+    if(first)
+    dw_old[i*n+j] = dw[i*n+j];
+    else
+	dw_old[i*n+j] = beta * dw_old[i*n+j] + (1-beta) * dw[i*n+j];
 
-	w[i*n+j] -= lr*dw[i*n+j];
+	w[i*n+j] -= lr*dw_old[i*n+j];
 
 }
 
 __global__ void
-FC_step_b(float *bias, float *db, float *db_old, float lr, float beta, int m, int n, int p)
+FC_step_b(float *b, float *db, float *db_old, float lr, float beta, int m, int n, int p,int first)
 {
 	int i = blockIdx.y * blockDim.y + threadIdx.y ;
 	int j = blockIdx.x * blockDim.x + threadIdx.x ;
 
-	db[i*n+j] = beta * db[i*n+j] + (1-beta) * db_old[i*n+j];
-	db_old[i*n+j] = db[i*n+j];
-	bias[i*n+j] -= lr*db[i*n+j];
+	if(first)
+    db_old[i*n+j] = db[i*n+j];
+    else
+	db_old[i*n+j] = beta * db_old[i*n+j] + (1-beta) * db[i*n+j];
+
+	b[i*n+j] -= lr*db_old[i*n+j];
 }

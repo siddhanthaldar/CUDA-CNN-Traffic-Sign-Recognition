@@ -8,7 +8,7 @@ int main(void)
 	float* img = new float[input_size*input_size*3];
 	for(int i = 0; i < input_size*input_size*3; i++)
 	{
-		img[i] = 1;//rand()/(float)RAND_MAX;
+		img[i] = rand()/(float)RAND_MAX;
 		// cout<<img[i]<<' ';
 	}
 
@@ -22,7 +22,7 @@ int main(void)
 	FC F2(12, 2);
 	softmax_and_loss S;
 
-	for(int epoch = 0; epoch < 100; epoch++)
+	for(int epoch = 0; epoch < 10; epoch++)
 	{
 
 		float* out_C1 = C1.forward(img, input_size, input_size);
@@ -45,9 +45,9 @@ int main(void)
 
 
 		float* del_out = S.backward(out_S, 1, 2);
-		F2.backward(del_out, out_F1);
+		F2.backward(out_F1,del_out);
 		del_out = F2.d_in;
-		F1.backward(del_out, out_C2);
+		F1.backward(out_C2,del_out);
 		del_out = F1.d_in;
 		del_out = C2.backward(del_out, out_R1, input_size, input_size);
 		R1.backward(del_out, input_size, input_size, 3);
@@ -58,8 +58,8 @@ int main(void)
 		// 	cout<<F2.db[i]<<' ';
 		// cout<<endl;
 
-		// F2.step(1e-3, 0.1);
-		// F1.step(1e-3, 0.1);
+		F2.step(1e-3, 0.9);
+		F1.step(1e-3, 0.9);
 		C1.step(1e-4, 0.9);
 		C2.step(1e-4, 0.9);
 		// break;

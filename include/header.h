@@ -60,7 +60,7 @@ public:
     float *dw, *dw_old;
     float *db, *db_old;
     float *d_in, *out;
-    int in_size, out_size;
+    int in_size, out_size,first;
 
     FC(int in_features, int out_features);
     void forward(float *in);
@@ -497,7 +497,7 @@ float* Conv2d::forward(float* image, int img_height, int img_width)
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Copy input feature map from the host memory to the CUDA device\n");
+	// printf("Copy input feature map from the host memory to the CUDA device\n");
 	err = cudaMemcpy(d_img, image, size_img, cudaMemcpyHostToDevice);
 	if (err != cudaSuccess)
 	{
@@ -505,7 +505,7 @@ float* Conv2d::forward(float* image, int img_height, int img_width)
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Copy input weight filter from the host memory to the CUDA device\n");
+	// printf("Copy input weight filter from the host memory to the CUDA device\n");
 	err = cudaMemcpy(d_filter, weight, size_filter, cudaMemcpyHostToDevice);
 	if (err != cudaSuccess)
 	{
@@ -525,7 +525,7 @@ float* Conv2d::forward(float* image, int img_height, int img_width)
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Copy output data from the CUDA device to the host memory\n");
+	// printf("Copy output data from the CUDA device to the host memory\n");
 	err = cudaMemcpy(h_out, d_out, size_out, cudaMemcpyDeviceToHost);
 	if (err != cudaSuccess)
 	{
@@ -552,7 +552,7 @@ float* Conv2d::forward(float* image, int img_height, int img_width)
 	}
 
 	err = cudaDeviceReset();
-	printf("Partyyyy\n");
+	// printf("Partyyyy\n");
 	return (h_out);
 }
 
@@ -602,7 +602,7 @@ float* Conv2d::backward(float* del_out, float* input, int input_height, int inpu
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Copy input feature map from the host memory to the CUDA device\n");
+	// printf("Copy input feature map from the host memory to the CUDA device\n");
 	err = cudaMemcpy(d_input, input, size_del_input, cudaMemcpyHostToDevice);
 	if (err != cudaSuccess)
 	{
@@ -610,7 +610,7 @@ float* Conv2d::backward(float* del_out, float* input, int input_height, int inpu
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Copy input weight filter from the host memory to the CUDA device\n");
+	// printf("Copy input weight filter from the host memory to the CUDA device\n");
 	err = cudaMemcpy(d_del_out, del_out, size_del_out, cudaMemcpyHostToDevice);
 	if (err != cudaSuccess)
 	{
@@ -631,7 +631,7 @@ float* Conv2d::backward(float* del_out, float* input, int input_height, int inpu
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Copy output data from the CUDA device to the host memory\n");
+	// printf("Copy output data from the CUDA device to the host memory\n");
 	err = cudaMemcpy(del_weight, d_del_weight, size_del_weight, cudaMemcpyDeviceToHost);
 	if (err != cudaSuccess)
 	{
@@ -655,7 +655,7 @@ float* Conv2d::backward(float* del_out, float* input, int input_height, int inpu
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Copy weight data from the host to the CUDA memory\n");
+	// printf("Copy weight data from the host to the CUDA memory\n");
 	err = cudaMemcpy(d_weight, weight, size_del_weight, cudaMemcpyHostToDevice);
 	if (err != cudaSuccess)
 	{
@@ -685,7 +685,7 @@ float* Conv2d::backward(float* del_out, float* input, int input_height, int inpu
 	dim3 grid_x(1, 1, channel_in); //order is z, x, y
 	dim3 block_x(input_width, input_height, 1);
 
-	printf("Copy input weight filter from the host memory to the CUDA device\n");
+	// printf("Copy input weight filter from the host memory to the CUDA device\n");
 	err = cudaMemcpy(d_del_input, del_input, size_del_input, cudaMemcpyHostToDevice);
 	if (err != cudaSuccess)
 	{
@@ -705,7 +705,7 @@ float* Conv2d::backward(float* del_out, float* input, int input_height, int inpu
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Copy output data from the CUDA device to the host memory\n");
+	// printf("Copy output data from the CUDA device to the host memory\n");
 	err = cudaMemcpy(del_input, d_del_input, size_del_input, cudaMemcpyDeviceToHost);
 	if (err != cudaSuccess)
 	{
@@ -750,7 +750,7 @@ float* Conv2d::backward(float* del_out, float* input, int input_height, int inpu
 	}
 
 	err = cudaDeviceReset();
-	printf("Partyyyy\n");
+	// printf("Partyyyy\n");
 	return (del_input);
 }
 
@@ -783,7 +783,7 @@ void Conv2d::step(float l_rate, float beeta)
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Copy input weight filter from the host memory to the CUDA device\n");
+	// printf("Copy input weight filter from the host memory to the CUDA device\n");
 	err = cudaMemcpy(d_weight, weight, size_weight, cudaMemcpyHostToDevice);
 	if (err != cudaSuccess)
 	{
@@ -791,7 +791,7 @@ void Conv2d::step(float l_rate, float beeta)
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Copy input weight filter from the host memory to the CUDA device\n");
+	// printf("Copy input weight filter from the host memory to the CUDA device\n");
 	err = cudaMemcpy(d_del_weight, del_weight, size_weight, cudaMemcpyHostToDevice);
 	if (err != cudaSuccess)
 	{
@@ -799,7 +799,7 @@ void Conv2d::step(float l_rate, float beeta)
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Copy input weight filter from the host memory to the CUDA device\n");
+	// printf("Copy input weight filter from the host memory to the CUDA device\n");
 	err = cudaMemcpy(d_del_vw, del_vw, size_weight, cudaMemcpyHostToDevice);
 	if (err != cudaSuccess)
 	{
@@ -819,7 +819,7 @@ void Conv2d::step(float l_rate, float beeta)
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Copy output data from the CUDA device to the host memory\n");
+	// printf("Copy output data from the CUDA device to the host memory\n");
 	err = cudaMemcpy(weight, d_weight, size_weight, cudaMemcpyDeviceToHost);
 	if (err != cudaSuccess)
 	{
@@ -827,7 +827,7 @@ void Conv2d::step(float l_rate, float beeta)
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Copy output data from the CUDA device to the host memory\n");
+	// printf("Copy output data from the CUDA device to the host memory\n");
 	err = cudaMemcpy(del_vw, d_del_vw, size_weight, cudaMemcpyDeviceToHost);
 	if (err != cudaSuccess)
 	{
@@ -865,6 +865,8 @@ FC::FC(int in_features, int out_features)
     weight = (float*)malloc(out_size*in_size*sizeof(float));
     dw = (float*)malloc(out_size*in_size*sizeof(float));
     dw_old = (float*)malloc(out_size*in_size*sizeof(float));
+
+    first = 1;
     for(int i=0;i<out_size*in_size;i++)
     {
         weight[i] = rand()/(float)RAND_MAX;
@@ -1304,12 +1306,12 @@ void FC::step(float lr, float beta)
     // Update weights
     dim3 grid(out_size,1,1);
     dim3 block(in_size,1,1);
-    FC_step_w<<<grid, block>>>(g_w,g_dw,g_dw_old,lr,beta,out_size,in_size,1);
+    FC_step_w<<<grid, block>>>(g_w,g_dw,g_dw_old,lr,beta,out_size,in_size,1,first);
 
     // Update bias
     dim3 grid1(1,1,1);
     dim3 block1(out_size,1,1);
-    FC_step_b<<<grid1, block1>>>(g_b,g_db,g_db_old,lr,beta,out_size,in_size,1);
+    FC_step_b<<<grid1, block1>>>(g_b,g_db,g_db_old,lr,beta,out_size,in_size,1,first);
 
 
     size = out_size*in_size*sizeof(int);
@@ -1401,6 +1403,7 @@ void FC::step(float lr, float beta)
         fprintf(stderr, "Failed to free device vector g_db_old (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
+    first=0;
 }
 
 
