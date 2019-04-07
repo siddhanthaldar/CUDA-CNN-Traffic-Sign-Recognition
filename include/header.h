@@ -3,7 +3,7 @@
 #include <cuda_runtime.h>
 #include <stdio.h>
 #include <math.h>
-#include "../src/kernel.cu"
+#include "kernel.cu"
 
 using namespace std;
 __global__ void conv_fp(float* d_out, float* d_img,float* d_filter,int channel_in,int channel_out,int kernel_size,int img_height,int img_width);
@@ -16,107 +16,107 @@ __global__ void conv_step(float* d_weight, float* d_del_weight, float* d_del_vw,
 class Conv2d
 {
 public:
-	bool is_first; //For Momentum initialization
-	float *weight; //channels_out, channels_in, kernel_size, kernel_size
-	float bias;
-	float* del_weight;
-	float* del_vw; //For momentum weight
-	int channel_in, channel_out, kernel_size;
+    bool is_first; //For Momentum initialization
+    float *weight; //channels_out, channels_in, kernel_size, kernel_size
+    float bias;
+    float* del_weight;
+    float* del_vw; //For momentum weight
+    int channel_in, channel_out, kernel_size;
 
-	Conv2d(int channel_in, int channel_out, int kernel_size);
-	float* forward(float* image, int img_width, int img_height);
-	float* backward(float* del_out, float* input, int input_height, int input_width);
-	void step(float l_rate, float beeta=0.9);
+    Conv2d(int channel_in, int channel_out, int kernel_size);
+    float* forward(float* image, int img_width, int img_height);
+    float* backward(float* del_out, float* input, int input_height, int input_width);
+    void step(float l_rate, float beeta=0.9);
 };
 
 Conv2d::Conv2d(int channel_in, int channel_out, int kernel_size)
 {
-	this->channel_in=channel_in;
-	this->channel_out = channel_out;
-	this->kernel_size = kernel_size;
-	is_first = 1;
-	// cout<<"\n the weight is: ";
-	weight = new float[channel_out*kernel_size*kernel_size*channel_in]();//Initialize the weights
-	del_weight = new float[channel_out*kernel_size*kernel_size*channel_in];//Initialize the weights
-	del_vw = new float[channel_out*kernel_size*kernel_size*channel_in];//Initialize the weights
+    this->channel_in=channel_in;
+    this->channel_out = channel_out;
+    this->kernel_size = kernel_size;
+    is_first = 1;
+    // cout<<"\n the weight is: ";
+    weight = new float[channel_out*kernel_size*kernel_size*channel_in]();//Initialize the weights
+    del_weight = new float[channel_out*kernel_size*kernel_size*channel_in];//Initialize the weights
+    del_vw = new float[channel_out*kernel_size*kernel_size*channel_in];//Initialize the weights
 
-	for(int i = 0; i < channel_out*kernel_size*kernel_size*channel_in; i++)
-	{
-		weight[i] = rand()*1.0/RAND_MAX;
-		// del_weight[i] = 0;
-		// cout<<weight[i]<<" ";
-	}
+    for(int i = 0; i < channel_out*kernel_size*kernel_size*channel_in; i++)
+    {
+        weight[i] = rand()*1.0/RAND_MAX;
+        // del_weight[i] = 0;
+        // cout<<weight[i]<<" ";
+    }
 
-	bias = 0.0;//replace with random
+    bias = 0.0;//replace with random
 }
 
 class FC
 {
 public:
 
-	float **weight;
-	float bias;
+    float **weight;
+    float bias;
 
-	FC(int in_features, int out_features);
-	void forward();
-	void backward();
+    FC(int in_features, int out_features);
+    void forward();
+    void backward();
 };
 
 class max_pool
 {
 public:
-	int** mask; //to remember the location
-	void forward();
-	void backward();
+    int** mask; //to remember the location
+    void forward();
+    void backward();
 };
 
 class ReLU
 {
 public:
-	void forward();
-	void backward();
+    void forward();
+    void backward();
 };
 
 class softmax_and_loss
 {
 public:
-	float loss;
-	float* forward(float* logits, int label, int n_classes);
-	float* backward(float* out, int label, int n_classes);
+    float loss;
+    float* forward(float* logits, int label, int n_classes);
+    float* backward(float* out, int label, int n_classes);
 };
 
 class dropout
 {
 public:
-	bool** mask;
-	void forward();
-	void backward();
+    bool** mask;
+    void forward();
+    void backward();
 };
 
 class preprocessing
 {
 public:
-	float *gray_img, *hist_img;
-	int h,w,channels;
-	preprocessing(int h, int w, int channels);
-	void BGR2GRAY(float* img);
+    float *gray_img, *hist_img;
+    int h,w,channels;
+    preprocessing(int h, int w, int channels);
+    void BGR2GRAY(float* img);
     void Histogram_Equalization(float *img);
 };
 
 preprocessing::preprocessing(int h, int w, int channels)
 {
-	this->h = h;
-	this->w = w;
-	this->channels = channels;
+    this->h = h;
+    this->w = w;
+    this->channels = channels;
 
-	gray_img = new float[h*w];
+    gray_img = new float[h*w];
     hist_img = new float[h*w];
 }
 
 
 void preprocessing::BGR2GRAY(float* img)
 {
-	cudaError_t err = cudaSuccess;
+    cudaError_t err = cudaSuccess;
     size_t size;
 
     float *g_img = NULL;   // g stands for GPU
@@ -166,7 +166,7 @@ void preprocessing::BGR2GRAY(float* img)
         exit(EXIT_FAILURE);
     }
 
-	// Free device global memory
+    // Free device global memory
     err = cudaFree(g_img);
     if (err != cudaSuccess)
     {
@@ -218,7 +218,7 @@ void preprocessing::Histogram_Equalization(float *img) // Here img is gray scale
     // Call kernel function
     dim3 grid(1,1,1);
     dim3 block(w,h,1);  
-    histogram_equalization<<<grid, block>>>(g_img,g_out_img,h,w,256);  
+    histogram_equalization<<<grid, block>>>(g_img, h, w, 256);  
     err = cudaGetLastError();
     if (err != cudaSuccess)
     {
@@ -226,7 +226,13 @@ void preprocessing::Histogram_Equalization(float *img) // Here img is gray scale
         exit(EXIT_FAILURE);
     }    
 
-
+    calcCDF<<<grid,block>>>(g_img, g_out_img, h, w, 256);
+    err = cudaGetLastError();
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to launch CDF calculation kernel (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    } 
     // Copy from Device to host
     size = h*w*sizeof(float);
     err = cudaMemcpy(hist_img, g_out_img, size, cudaMemcpyDeviceToHost);
@@ -234,7 +240,7 @@ void preprocessing::Histogram_Equalization(float *img) // Here img is gray scale
     {
         fprintf(stderr, "Failed to copy vector g_out_img from device to host (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
-    }
+    }   
 
     // Free device global memory
     err = cudaFree(g_img);
@@ -252,4 +258,3 @@ void preprocessing::Histogram_Equalization(float *img) // Here img is gray scale
     }
 
 }
-

@@ -5,7 +5,7 @@
 
 int main(void)
 {
-    int input_size = 3;
+    int input_size = 4;
     int channel_in = 3;
     int channel_out= 1;
     int numElements = input_size*input_size;
@@ -15,29 +15,29 @@ int main(void)
         image[i] = i;
     }
 
-    preprocessing gray(input_size, input_size, channel_in);
+    // preprocessing gray(input_size, input_size, channel_in);
 
-    gray.BGR2GRAY(image);
+    // gray.BGR2GRAY(image);
 
-    cout<<"Image : \n";
-    for(int j=0; j<channel_in; j++){
-        for(int i = 0; i<numElements; i++)
-            cout<<image[j*numElements + i]<<"   ";
-        cout<<"\n";    
-    }        
-    cout<<"\n";
+    // cout<<"Image : \n";
+    // for(int j=0; j<channel_in; j++){
+    //     for(int i = 0; i<numElements; i++)
+    //         cout<<image[j*numElements + i]<<"   ";
+    //     cout<<"\n";    
+    // }        
+    // cout<<"\n";
 
-    cout<<"Gray Image: \n";
-    for(int i = 0; i<numElements; i++)
-        cout<<gray.gray_img[i]<<"   ";
-    cout<<"\n\n";
-
-    // gray.Histogram_Equalization(gray.gray_img);
-
-    // cout<<"Histogram Equalized Image: \n";
+    // cout<<"Gray Image: \n";
     // for(int i = 0; i<numElements; i++)
-    //     cout<<gray.hist_img[i]<<"   ";
+    //     cout<<gray.gray_img[i]<<"   ";
     // cout<<"\n\n";
+    float *tmp = {4,1,3,2,3,1,1,1,0,1,5,2,1,1,2,2};
+    gray.Histogram_Equalization(tmp);//gray.gray_img);
+
+    cout<<"Histogram Equalized Image: \n";
+    for(int i = 0; i<numElements; i++)
+        cout<<gray.hist_img[i]<<"   ";
+    cout<<"\n\n";
 
 
     return 0;
