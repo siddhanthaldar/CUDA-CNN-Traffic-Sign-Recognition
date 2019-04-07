@@ -1320,13 +1320,13 @@ void FC::step(float lr, float beta)
 
     // Launch the Vector Add CUDA Kernel
     // Update weights
-    dim3 grid(out_size,1,1);
-    dim3 block(in_size,1,1);
+    dim3 grid(in_size,out_size,1);
+    dim3 block(1,1,1);
     FC_step_w<<<grid, block>>>(g_w,g_dw,g_dw_old,lr,beta,out_size,in_size,1,first);
 
     // Update bias
-    dim3 grid1(1,1,1);
-    dim3 block1(out_size,1,1);
+    dim3 grid1(out_size,1,1);
+    dim3 block1(1,1,1);
     FC_step_b<<<grid1, block1>>>(g_b,g_db,g_db_old,lr,beta,out_size,in_size,1,first);
 
 
