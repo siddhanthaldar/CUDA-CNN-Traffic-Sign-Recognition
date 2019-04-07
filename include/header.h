@@ -44,6 +44,9 @@ Conv2d::Conv2d(int channel_in, int channel_out, int kernel_size)
 	for(int i = 0; i < channel_out*kernel_size*kernel_size*channel_in; i++)
 	{
 		weight[i] = rand()*1.0/RAND_MAX;
+        int sign = rand()%2;
+        if(sign == 0)
+            weight[i] *= -1;
 		// del_weight[i] = 0;
 		// cout<<weight[i]<<" ";
 	}
@@ -431,10 +434,10 @@ public:
 float* softmax_and_loss::forward(float* logits, int label, int n_classes)
 {
 	double sum = 0;
-	float m = 0;
+	float m = INT_MIN;
 	for(int i = 0; i < n_classes; i++)
 		m = max(m, logits[i]);
-	for(int i=0; i<n_classes; i++){
+	for(int i=0; i< n_classes; i++){
 		logits[i] -= m;
 		sum += exp(logits[i]);
 	}
@@ -447,7 +450,7 @@ float* softmax_and_loss::forward(float* logits, int label, int n_classes)
 		if(i!= label) loss -= log(1-out[i] + 1e-5);
 		else loss -= log(out[i] + 1e-5); 
 	}
-	return (out);
+	return out;
 }
 
 float* softmax_and_loss::backward(float* out, int label, int n_classes){
@@ -871,13 +874,23 @@ FC::FC(int in_features, int out_features)
     {
         weight[i] = rand()/(float)RAND_MAX;
         dw_old[i] = 0;
+        int sign = rand()%2;
+        if(sign == 0)
+            weight[i] *= -1;
+
     }
 
     bias = (float*)malloc(out_size*sizeof(float));
     db = (float*)malloc(out_size*sizeof(float));
     db_old = (float*)malloc(out_size*sizeof(float));
     for(int i=0;i<out_size;i++)
+    {
         bias[i] = rand()/(float)RAND_MAX;
+        int sign = rand()%2;
+        if(sign == 0)
+            bias[i] *= -1;
+
+    }
 
 
     out = (float*)malloc(out_size*sizeof(float));
