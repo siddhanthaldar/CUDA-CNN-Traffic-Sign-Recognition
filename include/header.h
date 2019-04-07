@@ -448,8 +448,8 @@ float* softmax_cross_entropy_with_logits::forward(float* logits, int label, int 
 	}
 	loss = 0.0;
 	for(int i = 0; i<n_classes; i++){
-		if(i!= label) loss -= log(1-out[i] + 1e-5);
-		else loss -= log(out[i] + 1e-5); 
+		if(i!= label) loss -= log(1-out[i] + 1e-7);
+		else loss -= log(out[i] + 1e-7); 
 	}
 	return out;
 }
@@ -811,8 +811,8 @@ void Conv2d::step(float l_rate, float beeta)
 		exit(EXIT_FAILURE);
 	}
 
-	dim3 grid(1,1,channel_out);
-	dim3 block(kernel_size, kernel_size, channel_in);
+	dim3 grid(kernel_size,kernel_size,channel_out);
+	dim3 block(1, 1, channel_in);
 
 	conv_step<<<grid, block>>>(d_weight, d_del_weight, d_del_vw, channel_in, channel_out, kernel_size, l_rate, beeta, is_first);
 

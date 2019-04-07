@@ -65,7 +65,12 @@ int main(void)
 			cout<<"Epoch : "<<epoch;//<<' '<<"Out : "<<out_S[0]<<' '<<out_S[1]<<endl;
 			cout<<" Loss : "<<loss<<endl;
 
+			for(int i = 0; i < n_classes; i++)
+				cout<<out_S[i]<<' ';
+			cout<<endl;
+
 			float* del_out = S.backward(out_S, label, n_classes);
+
 			del_out = F2.backward(out_F1, del_out);
 			del_out = R4.backward(del_out, 1, 1, 1024);
 			del_out = F1.backward(out_M3, del_out);
@@ -82,6 +87,7 @@ int main(void)
 			del_out = R1.backward(del_out, img_dim, img_dim, 32);
 			del_out = C1.backward(del_out, img, img_dim, img_dim);
 
+
 			F2.step(1e-3, 0.9);
 			F1.step(1e-3, 0.9);
 			C1.step(1e-3, 0.9);
@@ -89,7 +95,5 @@ int main(void)
 			C3.step(1e-3, 0.9);
 
 		}
-
 	}
-
 }
