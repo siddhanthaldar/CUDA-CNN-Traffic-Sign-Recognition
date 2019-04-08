@@ -395,3 +395,45 @@ __global__ void gamma_transformation(float *in_img, float* out_img, int h, int w
 		out_img[i*w+j] = int(255 * pow( ((in_img[i*w+j])/255) , gamma));
 	}
 }
+__global__ void normalize_img(float* in_img, float* out_img, int h, int w, int num_levels)
+{
+	int j = blockIdx.x*blockDim.x + threadIdx.x;
+	int i = blockIdx.y*blockDim.y + threadIdx.y;
+
+	float mean;
+	if( i == 0 && j == 0)
+		mean = 0;
+
+	__syncthreads();
+	if( i < h && j <w)
+	{
+		atomicAdd(&mean,in_img[i*w+j]);
+	}
+	__syncthreads();
+	if( i == 0 && j == 0)
+		mean =(float)mean/h*w;
+	__syncthreads();
+
+	float variance;
+	if( i == 0 && j == 0)
+		mean = 0;
+
+	__syncthreads();
+	if( i < h && j <w)
+	{
+		atomicAdd(&variance,pow(in_img[i*w+j],2));
+	}
+	__syncthreads();
+
+	if( i == 0 && j == 0)
+	{
+		variance = (float)variance/h*w;
+		variance = variance - pow(mean,2);
+	}
+	__syncthreads();
+
+	if(i<h && j < w)
+	{
+		out_img[i*w+j] = (float)(in_img[i*w+j] - mean) / sqrt(variance);
+	}
+}

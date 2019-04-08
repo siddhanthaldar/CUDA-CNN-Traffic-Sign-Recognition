@@ -1632,6 +1632,7 @@ public:
     void GrayLevel_Neg_Transformation(float *img);
     void GrayLevel_Log_Transformation(float *img);
     void GrayLevel_Gam_Transformation(float *img);
+    void Normalization(float *img);
 };
 
 preprocessing::preprocessing(int h, int w, int channels)
@@ -1643,6 +1644,7 @@ preprocessing::preprocessing(int h, int w, int channels)
     gray_img = new float[h*w];
     hist_img = new float[h*w];
     trans_img = new float[h*w];
+    norm_img = new float[h*w];
 }
 
 
@@ -1984,6 +1986,77 @@ void preprocessing::GrayLevel_Gam_Transformation(float *img) // Here img is a gr
     // Copy from Device to host
     size = h*w*sizeof(float);
     err = cudaMemcpy(trans_img, g_out_img, size, cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector g_out_img from device to host (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }   
+
+    // Free device global memory
+    err = cudaFree(g_img);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free device vector g_img (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    err = cudaFree(g_out_img);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free device vector g_out_img (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+}
+void preprocessing::Normalization(float *img) // Here img is a gray scale image
+{
+    cudaError_t err = cudaSuccess;
+    size_t size;
+
+    //device input image
+    float *g_img = NULL;   
+    size = h*w*sizeof(float);
+    err = cudaMalloc((void **)&g_img, size);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate device vector g_img (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }    
+
+    //output image from device
+    float *g_out_img = NULL;   
+    size = h*w*sizeof(float);
+    err = cudaMalloc((void **)&g_out_img, size);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate device vector g_out_img (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }    
+
+    // Copy Memory to device
+    size = h*w*sizeof(float);
+    err = cudaMemcpy(g_img, img, size, cudaMemcpyHostToDevice);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector img from host to device (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    // Call kernel function
+
+    dim3 grid(1,1,1);
+    dim3 block(w,h,1);  
+    normalize_img<<<grid, block>>>(g_img, g_out_img, h, w, 256);  
+    err = cudaGetLastError();
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to launch normalization kernel (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }    
+
+    // Copy from Device to host
+    size = h*w*sizeof(float);
+    err = cudaMemcpy(norm_img, g_out_img, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
         fprintf(stderr, "Failed to copy vector g_out_img from device to host (error code %s)!\n", cudaGetErrorString(err));

@@ -5,7 +5,7 @@
 #define TEST
 int main(void)
 {
-    int input_size = 32;
+    int input_size = 4 ;
     int channel_in = 3;
     int channel_out= 1;
     int numElements = input_size*input_size;
@@ -39,12 +39,12 @@ int main(void)
      cout<<"\n\n";
     }
     #endif
-    /* //for checking
+     //for checking
     float *tmp = new float[numElements*channel_out];
     float tmp1[16] = {4,1,3,2,3,1,1,1,0,1,5,2,1,1,2,2};
     tmp = tmp1;
-    */
-    gray.Histogram_Equalization(gray.gray_img);
+    
+    gray.Histogram_Equalization(tmp);//gray.gray_img);
     
     #ifdef TEST
     {
@@ -54,7 +54,16 @@ int main(void)
         cout<<"\n\n";
     }
     #endif
+    gray.Normalization(gray.hist_img);
 
+    #ifdef TEST
+    {
+        cout<<"Normalised Image: \n";
+        for(int i = 0; i<numElements; i++)
+            cout<<gray.norm_img[i]<<"   ";
+        cout<<"\n\n";
+    }
+    #endif
     gray.GrayLevel_Neg_Transformation(gray.hist_img); //can send any of gray-scale image,hist-equalized image or transformed(if called before) 
     #ifdef TEST
     {
