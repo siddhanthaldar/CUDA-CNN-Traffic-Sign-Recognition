@@ -8,48 +8,86 @@ int h = 4;
 int w = 4;
 int channel = 3;
 
+// int main()
+// {
+//     float *M=(float*)malloc(h*w*channel*sizeof(float));
+//     cout << "in: " << endl;
+//     for(int i=0;i<h*w*channel;i++)
+//     {
+//       M[i]=rand()/(float)RAND_MAX;
+//       cout<<M[i]<<" ";  
+//     } 
+//     cout<<endl;
+
+//     max_pool obj(h,w,channel);
+
+//     obj.forward(M,h,w,channel);
+//     cout << "out:" << endl;
+//     for(int i=0;i<h/2*w/2*channel;i++)
+//     {
+//       cout << obj.out[i] << " "; 
+//     } 
+//     cout << endl;
+//     cout<<"d_out : \n";
+//     float *dM=(float*)malloc(h/2*w/2*channel*sizeof(float));
+//     for(int i=0;i<h/2*w/2*channel;i++)
+//     {
+//       dM[i]=i+1;
+//       cout<<dM[i]<<" "; 
+//     } 
+//     cout<<"\n\n";
+
+//     cout<<"Mask : \n";
+//     for(int i=0;i<h*w/4*channel;i++)
+//       cout << obj.mask[i] << "  ";
+//     cout<<"\n\n";
+
+//     obj.backward(dM,h/2,w/2,channel);
+
+//     cout<<"d_in : \n";
+//     for(int i=0;i<h*w*channel;i++)
+//       cout << obj.d_in[i] << "  ";
+//     cout<<"\n";
+
+//   return 0;
+// }
+
 int main()
 {
-    float *M=(float*)malloc(h*w*channel*sizeof(float));
-    cout << "in: " << endl;
-    for(int i=0;i<h*w*channel;i++)
-    {
-      M[i]=rand()/(float)RAND_MAX;
-      cout<<M[i]<<" ";  
-    } 
-    cout<<endl;
+    float *M1=(float*)malloc(5*sizeof(float));
+    float *M2=(float*)malloc(6*sizeof(float));
+    float *M3=(float*)malloc(7*sizeof(float));
 
-    max_pool obj(h,w,channel);
-
-    obj.forward(M,h,w,channel);
-    cout << "out:" << endl;
-    for(int i=0;i<h/2*w/2*channel;i++)
+    cout << "in1: " << endl;
+    for(int i=0;i<5;i++)
     {
-      cout << obj.out[i] << " "; 
-    } 
+      M1[i]=i+1;
+      cout<<M1[i]<<" ";  
+    }
     cout << endl;
-    cout<<"d_out : \n";
-    float *dM=(float*)malloc(h/2*w/2*channel*sizeof(float));
-    for(int i=0;i<h/2*w/2*channel;i++)
+
+    cout << "in2: " << endl;
+    for(int i=0;i<6;i++)
     {
-      dM[i]=i+1;
-      cout<<dM[i]<<" "; 
-    } 
-    cout<<"\n\n";
+      M2[i]=i+1;
+      cout<<M2[i]<<" ";  
+    }
+    cout << endl;
 
-    cout<<"Mask : \n";
-    for(int i=0;i<h*w/4*channel;i++)
-      cout << obj.mask[i] << "  ";
-    cout<<"\n\n";
+    cout << "in3: " << endl;
+    for(int i=0;i<7;i++)
+    {
+      M3[i]=i+1;
+      cout<<M3[i]<<" ";  
+    }
 
-    obj.backward(dM,h/2,w/2,channel);
-
-    cout<<"d_in : \n";
-    for(int i=0;i<h*w*channel;i++)
-      cout << obj.d_in[i] << "  ";
-    cout<<"\n";
-
-  return 0;
+    float *out = concat(M1,M2,M3,5,6,7);
+    cout << "out: " << endl;
+    for(int i=0;i<(5+6+7);i++)
+    {
+      cout << out[i] << " ";
+    }
+    cout << endl;
 }
 
 

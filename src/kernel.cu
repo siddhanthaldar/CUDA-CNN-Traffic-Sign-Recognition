@@ -471,3 +471,21 @@ void dropout_bp(float *d_out, float* d_in, bool *mask, int h, int w, int channel
 			d_in[k*h*w + i*w+j] = 0;
 	}
 }
+
+__global__ void
+concat(float *a1,float *a2,float *a3,float *out,int size_a1,int size_a2,int size_a3)
+{
+    int blockNum = blockIdx.z * (gridDim.x *gridDim.y) + blockIdx.y * gridDim.x+ blockIdx.x;
+    int threadNum = threadIdx.z * (blockDim.x* blockDim.y) + threadIdx.y * (blockDim.x) + threadIdx.x;
+    int globalThreadId = blockNum * (blockDim.x * blockDim.y * blockDim.z) +threadNum;
+
+    if(globalThreadId < (size_a1 + size_a2 + size_a3))
+    {
+           if(globalThreadId < size_a1)
+           out[globalThreadId] = a1[globalThreadId];
+           else if(globalThreadId < size_a1+size_a2)
+           out[globalThreadId] = a2[globalThreadId-size_a1];
+           else
+           out[globalThreadId] = a3[globalThreadId - size_a1 - size_a2];
+    }
+}
