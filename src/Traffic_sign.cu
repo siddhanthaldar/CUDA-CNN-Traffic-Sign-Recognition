@@ -1,12 +1,12 @@
 #include "../include/header.h"
 #include "../include/config.h"
 #include <fstream>
-#define NUM_IMAGE 5
-#define IMAGE_DIM 1
+#define NUM_IMAGE 1306
+#define IMAGE_DIM 32
 
-void parser(float** out_img, float* label){
+void parser(float** out_img, int* label){
 	ifstream infile;
-	infile.open("a.txt");
+	infile.open("../dataset.txt");
 
 	preprocessing gray(IMAGE_DIM, IMAGE_DIM, 3);
 	float** img = new float*[NUM_IMAGE]; 
@@ -26,12 +26,13 @@ void parser(float** out_img, float* label){
 				// cout<<img[i][j-1];
 			}
 		}
-		gray.BGR2IMAGE(img[i]);
-		gray.HistogramEqualization(gray.gray_img);
+		gray.BGR2GRAY(img[i]);
+		gray.Histogram_Equalization(gray.gray_img);
 		gray.Normalization(gray.hist_img);
 		out_img[i] = gray.norm_img;
 		// cout<<endl;
 	}
+	cout<<"Data Loaded"<<endl;
 
 infile.close();
 
@@ -44,9 +45,10 @@ int main(void)
 	for(int i=0; i< NUM_IMAGE; i++){
 		out_img[i] = new float[IMAGE_DIM*IMAGE_DIM*1];//this is to store gray scale normalized image
 	}
-	float* label = new float[NUM_IMAGE];
+	int* label = new int[NUM_IMAGE];
 	parser(out_img, label);
-	float** images = new float*[n_images];
+	cout<<out_img[0];
+	// float** images = new float*[n_images];
 
 	// for(int i = 0; i < n_images; i++)
 	// {
@@ -102,15 +104,13 @@ int main(void)
 			float* out_R4 = R4.forward(out_F1, 1, 1, 1024);
 			float* out_F2 = F2.forward(out_R4);
 
-			float* out_S = S.forward(out_F2, label, n_classes);
+			float* out_S = S.forward(out_F2, label[idx], n_classes);
 			float loss = S.loss;
 
 			cout<<"Epoch : "<<epoch;//<<' '<<"Out : "<<out_S[0]<<' '<<out_S[1]<<endl;
+			cout<<" Iteration : "<<idx;
+			cout<<" Label: "<<label[idx];
 			cout<<" Loss : "<<loss<<endl;
-
-			for(int i = 0; i < n_classes; i++)
-				cout<<out_S[i]<<' ';
-			cout<<endl;
 
 			float* del_out = S.backward(out_S, label[idx], n_classes);
 
