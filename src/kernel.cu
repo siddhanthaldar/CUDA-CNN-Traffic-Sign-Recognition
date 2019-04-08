@@ -34,7 +34,12 @@ Sigmoid_fp(float *out, float *in, int h, int w, int channel)
 
 	if(i<h && j<w*channel)
 	{
-		out[i*w*channel+j] = 1.0/(1+exp(-1.0*in[i*w*channel+j]));   //k*w*h+
+		if(in[i*w*channel+j] > 80)
+			out[i*w*channel+j] = 1.0;
+		else if(in[i*w*channel+j] < -80)
+			out[i*w*channel+j] = 0.0;
+		else
+			out[i*w*channel+j] = 1.0/(1+exp(-1.0*in[i*w*channel+j]));   //k*w*h+
 	}
 }
 

@@ -4,6 +4,8 @@
 #include "../src/kernel.cu"
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
+#include<stdlib.h>
 
 #define ENHANCE_PARAM 45.986  //parameter which adjusts enhancement in log transformation(255/log(256) - scale b/w 0 - 255))
 #define GAMMA 0.5  //parameter used for gamma correction
@@ -46,7 +48,7 @@ Conv2d::Conv2d(int channel_in, int channel_out, int kernel_size)
 
 	for(int i = 0; i < channel_out*kernel_size*kernel_size*channel_in; i++)
 	{
-		weight[i] = rand()*1.0/RAND_MAX;
+		weight[i] = rand()*0.1/RAND_MAX;
         int sign = rand()%2;
         if(sign == 0)
             weight[i] *= -1;
@@ -886,7 +888,7 @@ FC::FC(int in_features, int out_features)
     first = 1;
     for(int i=0;i<out_size*in_size;i++)
     {
-        weight[i] = rand()/(float)RAND_MAX;
+        weight[i] = rand()*0.1/(float)RAND_MAX;
         dw_old[i] = 0;
         int sign = rand()%2;
         if(sign == 0)
@@ -899,7 +901,7 @@ FC::FC(int in_features, int out_features)
     db_old = (float*)malloc(out_size*sizeof(float));
     for(int i=0;i<out_size;i++)
     {
-        bias[i] = rand()/(float)RAND_MAX;
+        bias[i] = rand()*0.1/(float)RAND_MAX;
         int sign = rand()%2;
         if(sign == 0)
             bias[i] *= -1;

@@ -1,6 +1,6 @@
 #include "../include/header.h"
 #include <fstream>
-#define NUM_IMAGE 50
+#define NUM_IMAGE 10
 #define IMAGE_DIM 32
 #define n_classes 43
 
@@ -74,13 +74,17 @@ int main(void)
 	Conv2d C2(32, 64, 5);
 	ReLU R2(IMAGE_DIM/2, IMAGE_DIM/2, 64);
 	MaxPool M2(IMAGE_DIM/2, IMAGE_DIM/2, 64);
+	// Dropout D1(0.2, IMAGE_DIM/4, IMAGE_DIM/4, 64);
 
 	Conv2d C3(64, 128, 5);
 	ReLU R3(IMAGE_DIM/4, IMAGE_DIM/4, 128);
 	MaxPool M3(IMAGE_DIM/4, IMAGE_DIM/4, 128);
+	// Dropout D2(0.2, IMAGE_DIM/8, IMAGE_DIM/8, 128);
 
 	FC F1((IMAGE_DIM*IMAGE_DIM/64)*128, 1024);
 	ReLU R4(1, 1, 1024);
+	// Dropout D3(0.2, 1, 1, 1024);
+
 	FC F2(1024, n_classes);
 	Sigmoid S1(1,1,n_classes);
 
@@ -88,7 +92,7 @@ int main(void)
 
 	for(int epoch = 0; epoch < 100; epoch++)
 	{
-
+		float acc = 0;
 		for(int idx = 0; idx < NUM_IMAGE; idx++)
 		{
 			float* img = out_img[idx];
@@ -108,24 +112,52 @@ int main(void)
 			float* out_F1 = F1.forward(out_M3);
 			float* out_R4 = R4.forward(out_F1, 1, 1, 1024);
 			float* out_F2 = F2.forward(out_R4);
-			float* out_S1 = S1.forward(out_F2, 1,1,n_classes); 
+			// float* out_S1 = S1.forward(out_F2, 1,1,n_classes); 
 
-			float* out_S = S.forward(out_S1, label[idx], n_classes);
+
+
+			float* out_S = S.forward(out_F2, label[idx], n_classes);
+
+			float m = -1;
+			int ind = -1;
+			for(int i = 0; i < n_classes; i++)
+				if(m < out_S[i])
+				{
+					m = out_S[i];
+					ind = i;
+				}
+			if(label[idx] == ind)
+				acc += 1;
+
 			float loss = S.loss;
+			cout<<"Loss : "<<loss<<endl;
+			// cout<<"Relu : \n";
+			// for(int i = 0; i < n_classes; i++)
+			// 	cout<<out_R4[i]<<' ';
+			// cout<<endl;
+
+			// cout<<"FC : \n";
+			// for(int i = 0; i < n_classes; i++)
+			// 	cout<<out_F2[i]<<' ';
+			// cout<<endl;
+
+			// cout<<"Sigmoid : \n";
+			// for(int i = 0; i < n_classes; i++)
+			// 	cout<<out_S[i]<<' ';
+			// cout<<endl;
+
 
 			sum_loss += loss;
 			if(idx % 25 == 0){
 			cout<<"Epoch : "<<epoch;//<<' '<<"Out : "<<out_S[0]<<' '<<out_S[1]<<endl;
 			cout<<" Iteration : "<<idx;
 			cout<<" Label: "<<label[idx];
-			cout<<" Loss : "<<(sum_loss/100)<<endl;
+			cout<<"Running Loss : "<<(sum_loss/25)<<endl;
 			sum_loss = 0;
-
-
 			}
 
 			float* del_out = S.backward(out_S, label[idx], n_classes);
-			del_out = S1.backward(del_out, 1, 1, n_classes);
+			// del_out = S1.backward(del_out, 1, 1, n_classes);
 
 			del_out = F2.backward(out_F1, del_out);
 			del_out = R4.backward(del_out, 1, 1, 1024);
@@ -134,6 +166,10 @@ int main(void)
 			del_out = M3.backward(del_out, IMAGE_DIM/8, IMAGE_DIM/8, 128);
 			del_out = R3.backward(del_out, IMAGE_DIM/4, IMAGE_DIM/4, 128);
 			del_out = C3.backward(del_out, out_M2, IMAGE_DIM/4, IMAGE_DIM/4);
+			// for(int i = 0; i < 10; i++)
+			// 	cout<<del_out[i]<<' ';
+			// cout<<endl;
+
 
 			del_out = M2.backward(del_out, IMAGE_DIM/4, IMAGE_DIM/4, 64);
 			del_out = R2.backward(del_out, IMAGE_DIM/2, IMAGE_DIM/2, 64);
@@ -149,7 +185,7 @@ int main(void)
 			C1.step(1e-3, 0.9);
 			C2.step(1e-3, 0.9);
 			C3.step(1e-3, 0.9);
-
 		}
+		cout<<"\nEpoch : "<<epoch<<", Accuracy : "<<acc/NUM_IMAGE<<endl;
 	}
 }
