@@ -489,3 +489,45 @@ concat(float *a1,float *a2,float *a3,float *out,int size_a1,int size_a2,int size
            out[globalThreadId] = a3[globalThreadId - size_a1 - size_a2];
     }
 }
+__global__ void normalize_img(float* in_img, float* out_img, int h, int w, int num_levels)
+{
+	int j = blockIdx.x*blockDim.x + threadIdx.x;
+	int i = blockIdx.y*blockDim.y + threadIdx.y;
+
+	__shared__ float mean;
+	if( i == 0 && j == 0)
+		mean = 0;
+
+	__syncthreads();
+	if( i < h && j <w)
+	{
+		atomicAdd(&mean,in_img[i*w+j]);
+	}
+	__syncthreads();
+	if( i == 0 && j == 0)
+		mean = (float)mean/(float)(h*w);
+	__syncthreads();
+
+	__shared__ float variance;
+	if( i == 0 && j == 0)
+		variance = 0;
+
+	__syncthreads();
+	if( i < h && j <w)
+	{
+		atomicAdd(&variance,pow(in_img[i*w+j],2));
+	}
+	__syncthreads();
+
+	if( i == 0 && j == 0)
+	{
+		variance = (float)variance/(float)(h*w);
+		variance = variance - pow(mean,2);
+	}
+	__syncthreads();
+
+	if(i<h && j < w)
+	{
+		out_img[i*w+j] = (float)(in_img[i*w+j] - mean) / (sqrt(variance));
+	}
+}

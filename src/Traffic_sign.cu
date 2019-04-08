@@ -1,21 +1,64 @@
 #include "../include/header.h"
 #include "../include/config.h"
+#include <fstream>
+#define NUM_IMAGE 5
+#define IMAGE_DIM 1
+
+void parser(float** out_img, float* label){
+	ifstream infile;
+	infile.open("a.txt");
+
+	preprocessing gray(IMAGE_DIM, IMAGE_DIM, 3);
+	float** img = new float*[NUM_IMAGE]; 
+	
+
+	for (int i = 0; i<NUM_IMAGE; i++){
+		img[i] = new float[IMAGE_DIM*IMAGE_DIM*3];
+	}
+	for (int i = 0; i<NUM_IMAGE;i++){
+		for (int j=0; j<IMAGE_DIM*IMAGE_DIM*3+1;j++){
+			if(j == 0){
+				infile>>label[i]; 
+				// cout<<"The label "<<label[i]<<endl;
+			}
+			else {
+				infile >> img[i][j-1];
+				// cout<<img[i][j-1];
+			}
+		}
+		gray.BGR2IMAGE(img[i]);
+		gray.HistogramEqualization(gray.gray_img);
+		gray.Normalization(gray.hist_img);
+		out_img[i] = gray.norm_img;
+		// cout<<endl;
+	}
+
+infile.close();
+
+}
+
 
 int main(void)
 {
+	float** out_img = new float*[NUM_IMAGE]; 
+	for(int i=0; i< NUM_IMAGE; i++){
+		out_img[i] = new float[IMAGE_DIM*IMAGE_DIM*1];//this is to store gray scale normalized image
+	}
+	float* label = new float[NUM_IMAGE];
+	parser(out_img, label);
 	float** images = new float*[n_images];
 
-	for(int i = 0; i < n_images; i++)
-	{
-		images[i] = new float[img_dim*img_dim*1];
-		for(int j = 0; j < img_dim*img_dim*1; j++)
-		{
-			images[i][j] = rand()*1.0/(float)RAND_MAX;
-			images[i][j] *= (rand()%2) == 0 ? -1 : 1;
-			// cout<<img[i]<<' ';
-		}
-	}
-	int label = 4;
+	// for(int i = 0; i < n_images; i++)
+	// {
+	// 	images[i] = new float[img_dim*img_dim*1];
+	// 	for(int j = 0; j < img_dim*img_dim*1; j++)
+	// 	{
+	// 		images[i][j] = rand()*1.0/(float)RAND_MAX;
+	// 		images[i][j] *= (rand()%2) == 0 ? -1 : 1;
+	// 		// cout<<img[i]<<' ';
+	// 	}
+	// }
+	// int label = 4;
 
 	//Defining Model
 	Conv2d C1(1, 32, 5);
@@ -39,9 +82,9 @@ int main(void)
 	for(int epoch = 0; epoch < 100; epoch++)
 	{
 
-		for(int idx = 0; idx < n_images; idx++)
+		for(int idx = 0; idx < NUM_IMAGE; idx++)
 		{
-			float* img = images[idx];
+			float* img = out_img[idx];
 
 			float* out_C1 = C1.forward(img, img_dim, img_dim);
 			float* out_R1 = R1.forward(out_C1, img_dim, img_dim, 32);
@@ -69,7 +112,7 @@ int main(void)
 				cout<<out_S[i]<<' ';
 			cout<<endl;
 
-			float* del_out = S.backward(out_S, label, n_classes);
+			float* del_out = S.backward(out_S, label[idx], n_classes);
 
 			del_out = F2.backward(out_F1, del_out);
 			del_out = R4.backward(del_out, 1, 1, 1024);

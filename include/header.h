@@ -1626,11 +1626,13 @@ float* MaxPool::backward(float *d_out, int h, int w,int channel)  // h and w are
 
 //////////////////////Preprocessing class/////////////////////
 
+//////////////////////Preprocessing class/////////////////////
+
 class preprocessing
 {
 public:
     
-    float *gray_img, *hist_img, *trans_img;
+    float *gray_img, *hist_img, *trans_img, *norm_img;
     int h,w,channels;
     
     preprocessing(int h, int w, int channels);
@@ -1640,6 +1642,7 @@ public:
     void GrayLevel_Neg_Transformation(float *img);
     void GrayLevel_Log_Transformation(float *img);
     void GrayLevel_Gam_Transformation(float *img);
+    void Normalization(float *img);
 };
 
 preprocessing::preprocessing(int h, int w, int channels)
@@ -1651,6 +1654,7 @@ preprocessing::preprocessing(int h, int w, int channels)
     gray_img = new float[h*w];
     hist_img = new float[h*w];
     trans_img = new float[h*w];
+    norm_img = new float[h*w];
 }
 
 
@@ -2014,340 +2018,74 @@ void preprocessing::GrayLevel_Gam_Transformation(float *img) // Here img is a gr
     }
 
 }
-
-///////////////////////////////// Dropout //////////////////////////////////////
-
-Dropout::Dropout(float drop_prob, int h, int w, int channel)
+void preprocessing::Normalization(float *img) // Here img is a gray scale image
 {
-    this->drop_prob = drop_prob;
-    this->h = h;
-    this->w = w;
-    this->channel = channel;
-    mask = new bool[h*w*channel];
-    d_in = new float[h*w*channel];
-}
-
-float* Dropout::forward(float *in)
-{
-    // Generate Random numbers
-    curandState* devStates;
-    int N = h*w*channel;
-    cudaMalloc(&devStates, N*sizeof(curandState));
-
-    // setup seeds
-    dim3 grid0(1,1,channel);
-    dim3 block0(w,h,1);
-    setup_kernel<<<grid0,block0>>>(devStates,unsigned(time(NULL)),h,w);
-    float* N2 = new float[N];
-    float* N3;
-    cudaMalloc((void**) &N3, sizeof(float)*N);
-
-    dim3 grid1(1,1,channel);
-    dim3 block1(w,h,1);
-    kernel<<<grid1,block1>>> (N3, devStates, N,h,w);
-
-    // Forward Prop
     cudaError_t err = cudaSuccess;
     size_t size;
 
-    float *g_in = NULL;   // g stands for GPU
-    size = h*w*channel*sizeof(float);
-    err = cudaMalloc((void **)&g_in, size);
+    //device input image
+    float *g_img = NULL;   
+    size = h*w*sizeof(float);
+    err = cudaMalloc((void **)&g_img, size);
     if (err != cudaSuccess)
     {
-        fprintf(stderr, "Failed to allocate device vector g_in (error code %s)!\n", cudaGetErrorString(err));
+        fprintf(stderr, "Failed to allocate device vector g_img (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }    
+
+    //output image from device
+    float *g_out_img = NULL;   
+    size = h*w*sizeof(float);
+    err = cudaMalloc((void **)&g_out_img, size);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate device vector g_out_img (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }    
+
+    // Copy Memory to device
+    size = h*w*sizeof(float);
+    err = cudaMemcpy(g_img, img, size, cudaMemcpyHostToDevice);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector img from host to device (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
 
-    bool *g_mask = NULL; 
-    size = h*w*channel*sizeof(bool);
-    err = cudaMalloc((void **)&g_mask, size);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to allocate device vector g_mask (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
+    // Call kernel function
 
-    size = h*w*channel*sizeof(float);
-    err = cudaMemcpy(g_in, in, size, cudaMemcpyHostToDevice);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to copy vector g_in from host to device (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    // Launch the CUDA Kernel
-    dim3 grid(1,1,channel);
+    dim3 grid(1,1,1);
     dim3 block(w,h,1);  
-    dropout_fp<<<grid, block>>>(g_in,g_mask,drop_prob,h,w,channel,N3);   
+    normalize_img<<<grid, block>>>(g_img, g_out_img, h, w, 256);  
     err = cudaGetLastError();
     if (err != cudaSuccess)
     {
-        fprintf(stderr, "Failed to launch dropout_fp kernel (error code %s)!\n", cudaGetErrorString(err));
+        fprintf(stderr, "Failed to launch normalization kernel (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
-    }
+    }    
 
-    //Copy Memory from device to host
-    size = h*w*channel*sizeof(bool);
-    err = cudaMemcpy(mask, g_mask, size, cudaMemcpyDeviceToHost);
+    // Copy from Device to host
+    size = h*w*sizeof(float);
+    err = cudaMemcpy(norm_img, g_out_img, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
-        fprintf(stderr, "Failed to copy vector g_mask from device to host (error code %s)!\n", cudaGetErrorString(err));
+        fprintf(stderr, "Failed to copy vector g_out_img from device to host (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
-    }
-
-    size = h*w*channel*sizeof(float);
-    err = cudaMemcpy(in, g_in, size, cudaMemcpyDeviceToHost);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to copy vector g_in from device to host (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
+    }   
 
     // Free device global memory
-    err = cudaFree(g_in);
+    err = cudaFree(g_img);
     if (err != cudaSuccess)
     {
-        fprintf(stderr, "Failed to free device vector g_in (error code %s)!\n", cudaGetErrorString(err));
+        fprintf(stderr, "Failed to free device vector g_img (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
 
-    err = cudaFree(g_mask);
+    err = cudaFree(g_out_img);
     if (err != cudaSuccess)
     {
-        fprintf(stderr, "Failed to free device vector g_mask (error code %s)!\n", cudaGetErrorString(err));
+        fprintf(stderr, "Failed to free device vector g_out_img (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
 
-    err = cudaFree(N3);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to free device vector N3 (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    err = cudaFree(devStates);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to free device vector devStates (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-
-    err = cudaDeviceReset();
-    return(in);
-}
-
-float* Dropout::backward(float* d_out)
-{
-    cudaError_t err = cudaSuccess;
-    size_t size;
-
-    float *g_d_out = NULL; 
-    size = h*w*channel*sizeof(float);
-    err = cudaMalloc((void **)&g_d_out, size);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to allocate device vector g_d_out (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    float *g_d_in = NULL; 
-    size = h*w*channel*sizeof(float);
-    err = cudaMalloc((void **)&g_d_in, size);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to allocate device vector g_d_in (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    bool *g_mask = NULL; 
-    size = h*w*channel*sizeof(bool);
-    err = cudaMalloc((void **)&g_mask, size);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to allocate device vector g_mask (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    // Copy Memory from host to device
-    size = h*w*channel*sizeof(float);
-    err = cudaMemcpy(g_d_out, d_out, size, cudaMemcpyHostToDevice);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to copy vector g_d_out from host to device (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    size = h*w*channel*sizeof(bool);
-    err = cudaMemcpy(g_mask, mask, size, cudaMemcpyHostToDevice);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to copy vector g_mask from host to device (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    // Launch the CUDA Kernel
-    dim3 grid(1,1,channel);
-    dim3 block(w,h,1);  
-    dropout_bp<<<grid, block>>>(g_d_out,g_d_in,g_mask,h,w,channel);   
-    err = cudaGetLastError();
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to launch dropout_bp kernel (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    // Copy memory from device to host
-    size = h*w*channel*sizeof(int);
-    err = cudaMemcpy(d_in, g_d_in, size, cudaMemcpyDeviceToHost);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to copy vector g_d_in from device to host (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    // Free device global memory
-
-    err = cudaFree(g_d_out);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to free device vector g_d_out (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    err = cudaFree(g_d_in);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to free device vector g_d_in(error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    err = cudaFree(g_mask);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to free device vector g_mask (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    err = cudaDeviceReset();
-    return(d_in);
-
-}
-
-float* concat(float *a1,float *a2,float *a3,int size_a1,int size_a2,int size_a3)
-{
-    float *out = new float[(size_a1+size_a2+size_a3)];
-    cudaError_t err = cudaSuccess;
-    size_t size;
-
-    float *g_a1 = NULL;   // g stands for GPU
-    size = size_a1*sizeof(float);
-    err = cudaMalloc((void **)&g_a1, size);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to allocate device vector g_a1 (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    float *g_a2 = NULL;   // g stands for GPU
-    size = size_a2*sizeof(float);
-    err = cudaMalloc((void **)&g_a2, size);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to allocate device vector g_a2 (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    float *g_a3 = NULL;   // g stands for GPU
-    size = size_a3*sizeof(float);
-    err = cudaMalloc((void **)&g_a3, size);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to allocate device vector g_a3 (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    float *g_out = NULL;   // g stands for GPU
-    size = (size_a1+size_a2+size_a3)*sizeof(float);
-    err = cudaMalloc((void **)&g_out, size);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to allocate device vector g_out (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    size = size_a1*sizeof(float);
-    err = cudaMemcpy(g_a1,a1, size, cudaMemcpyHostToDevice);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to copy vector g_a1 from host to device (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    size = size_a2*sizeof(float);
-    err = cudaMemcpy(g_a2,a2, size, cudaMemcpyHostToDevice);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to copy vector g_a2 from host to device (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    size = size_a3*sizeof(float);
-    err = cudaMemcpy(g_a3,a3, size, cudaMemcpyHostToDevice);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to copy vector g_a3 from host to device (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    int g = (ceil)((size_a1 + size_a2 + size_a3)/1024.0);
-    dim3 grid(1,1,g);
-    dim3 block(1,32,32);
-    concat<<<grid,block>>>(g_a1,g_a2,g_a3,g_out,size_a1,size_a2,size_a3);  
-    err = cudaGetLastError();
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to launch concat kernel (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    size = (size_a1 + size_a2 + size_a3)*sizeof(float);
-    err = cudaMemcpy(out,g_out, size, cudaMemcpyDeviceToHost);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to copy vector g_out from device to host (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-       // Free device global memory
-    err = cudaFree(g_a1);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to free device vector g_a1 (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    err = cudaFree(g_a2);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to free device vector g_a2 (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    err = cudaFree(g_a3);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to free device vector g_a3 (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    err = cudaFree(g_out);
-    if (err != cudaSuccess)
-    {
-        fprintf(stderr, "Failed to free device vector g_out (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    return out;
 }
