@@ -129,12 +129,30 @@ Dropout::Dropout(float drop_prob, int h, int w, int channel)
     this->h = h;
     this->w = w;
     this->channel = channel;
-    mask = new bool[h*w];
+    mask = new bool[h*w*channel];
     d_in = new float[h*w*channel];
 }
 
 float* Dropout::forward(float *in)
 {
+    // Generate Random numbers
+    curandState* devStates;
+    int N = h*w*channel;
+    cudaMalloc(&devStates, N*sizeof(curandState));
+
+    // setup seeds
+    dim3 grid0(1,1,channel);
+    dim3 block0(w,h,1);
+    setup_kernel<<<grid0,block0>>>(devStates,unsigned(time(NULL)),h,w);
+    float* N2 = new float[N];
+    float* N3;
+    cudaMalloc((void**) &N3, sizeof(float)*N);
+
+    dim3 grid1(1,1,channel);
+    dim3 block1(w,h,1);
+    kernel<<<grid1,block1>>> (N3, devStates, N,h,w);
+
+    // Forward Prop
     cudaError_t err = cudaSuccess;
     size_t size;
 
@@ -148,7 +166,7 @@ float* Dropout::forward(float *in)
     }
 
     bool *g_mask = NULL; 
-    size = h*w*sizeof(bool);
+    size = h*w*channel*sizeof(bool);
     err = cudaMalloc((void **)&g_mask, size);
     if (err != cudaSuccess)
     {
@@ -167,7 +185,7 @@ float* Dropout::forward(float *in)
     // Launch the CUDA Kernel
     dim3 grid(1,1,channel);
     dim3 block(w,h,1);  
-    dropout_fp<<<grid, block>>>(g_in,g_mask,drop_prob,h,w,channel);   
+    dropout_fp<<<grid, block>>>(g_in,g_mask,drop_prob,h,w,channel,N3);   
     err = cudaGetLastError();
     if (err != cudaSuccess)
     {
@@ -176,7 +194,7 @@ float* Dropout::forward(float *in)
     }
 
     //Copy Memory from device to host
-    size = h*w*sizeof(bool);
+    size = h*w*channel*sizeof(bool);
     err = cudaMemcpy(mask, g_mask, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -184,7 +202,7 @@ float* Dropout::forward(float *in)
         exit(EXIT_FAILURE);
     }
 
-    size = h*w*sizeof(float);
+    size = h*w*channel*sizeof(float);
     err = cudaMemcpy(in, g_in, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -206,6 +224,21 @@ float* Dropout::forward(float *in)
         fprintf(stderr, "Failed to free device vector g_mask (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
+
+    err = cudaFree(N3);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free device vector N3 (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    err = cudaFree(devStates);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to free device vector devStates (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
 
     err = cudaDeviceReset();
     return(in);
@@ -235,7 +268,7 @@ float* Dropout::backward(float* d_out)
     }
 
     bool *g_mask = NULL; 
-    size = h*w*sizeof(bool);
+    size = h*w*channel*sizeof(bool);
     err = cudaMalloc((void **)&g_mask, size);
     if (err != cudaSuccess)
     {
@@ -252,7 +285,7 @@ float* Dropout::backward(float* d_out)
         exit(EXIT_FAILURE);
     }
 
-    size = h*w*sizeof(bool);
+    size = h*w*channel*sizeof(bool);
     err = cudaMemcpy(g_mask, mask, size, cudaMemcpyHostToDevice);
     if (err != cudaSuccess)
     {

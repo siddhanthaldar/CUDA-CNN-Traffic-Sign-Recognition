@@ -8,15 +8,15 @@ using namespace std;
 
 int main()
 {
-  int h = 4;
-  int w = 4;
-  int channel = 2;
+  int h = 2;
+  int w = 2;
+  int channel = 4;
   float drop_prob = 0.5;
   float *in=(float*)malloc(h*w*channel*sizeof(float));
   float *out=(float*)malloc(h*w*channel*sizeof(float));
   for(int i=0; i<h*w*channel; i++)
   {
-  	in[i] = i;
+  	in[i] = rand()*1.0/(float)RAND_MAX;
   } 
 
   cout<<"In : \n";
