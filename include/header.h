@@ -167,7 +167,7 @@ float* ReLU::forward(float *in, int h, int w, int channel)
         exit(EXIT_FAILURE);
     }
 
-    size = h*w*channel*sizeof(int);
+    size = h*w*channel*sizeof(float);
     err = cudaMemcpy(out, g_out, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -251,7 +251,7 @@ float* ReLU::backward(float* d_out, int h, int w, int channel)
         exit(EXIT_FAILURE);
     }
 
-    size = h*w*channel*sizeof(int);
+    size = h*w*channel*sizeof(float);
     err = cudaMemcpy(d_in, g_d_in, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -326,7 +326,7 @@ float* Sigmoid::forward(float *in, int h, int w, int channel)
         exit(EXIT_FAILURE);
     }
 
-    size = h*w*channel*sizeof(int);
+    size = h*w*channel*sizeof(float);
     err = cudaMemcpy(out, g_out, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -410,7 +410,7 @@ float* Sigmoid::backward(float* d_out, int h, int w, int channel)
         exit(EXIT_FAILURE);
     }
 
-    size = h*w*channel*sizeof(int);
+    size = h*w*channel*sizeof(float);
     err = cudaMemcpy(d_in, g_d_in, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -461,8 +461,8 @@ float* softmax_cross_entropy_with_logits::forward(float* logits, int label, int 
 	}
 	loss = 0.0;
 	for(int i = 0; i<n_classes; i++){
-		if(i!= label) loss -= log(1-out[i] + 1e-7);
-		else loss -= log(out[i] + 1e-7); 
+		if(i!= label) loss -= 0*log(1-out[i] + 1e-15);
+		else loss -= log(out[i] + 1e-15);
 	}
 	return out;
 }
@@ -989,7 +989,7 @@ float* FC::forward(float *in)//, int in_size, int out_size)
         exit(EXIT_FAILURE);
     }
 
-    size = out_size*sizeof(int);
+    size = out_size*sizeof(float);
     err = cudaMemcpy(out, g_out, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -1142,7 +1142,7 @@ float* FC::backward(float *in, float *d_out)//,int in_size, int out_size)
     dim3 block(1,1,1);  
     FC_bp<<<grid, block>>>(g_d_out,g_d_in,g_w,g_w_transpose,g_dw,g_b,g_db,g_in,out_size,in_size,1);
 
-    size = in_size*sizeof(int);
+    size = in_size*sizeof(float);
     err = cudaMemcpy(d_in, g_d_in, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -1150,7 +1150,7 @@ float* FC::backward(float *in, float *d_out)//,int in_size, int out_size)
         exit(EXIT_FAILURE);
     }
 
-    size = out_size*in_size*sizeof(int);
+    size = out_size*in_size*sizeof(float);
     err = cudaMemcpy(dw, g_dw, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -1158,7 +1158,7 @@ float* FC::backward(float *in, float *d_out)//,int in_size, int out_size)
         exit(EXIT_FAILURE);
     }
 
-    size = out_size*sizeof(int);
+    size = out_size*sizeof(float);
     err = cudaMemcpy(db, g_db, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -1345,7 +1345,7 @@ void FC::step(float lr, float beta)
     FC_step_b<<<grid1, block1>>>(g_b,g_db,g_db_old,lr,beta,out_size,in_size,1,first);
 
 
-    size = out_size*in_size*sizeof(int);
+    size = out_size*in_size*sizeof(float);
     err = cudaMemcpy(weight, g_w, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -1353,7 +1353,7 @@ void FC::step(float lr, float beta)
         exit(EXIT_FAILURE);
     }
 
-    size = out_size*in_size*sizeof(int);
+    size = out_size*in_size*sizeof(float);
     err = cudaMemcpy(dw, g_dw, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -1361,7 +1361,7 @@ void FC::step(float lr, float beta)
         exit(EXIT_FAILURE);
     }
 
-    size = out_size*in_size*sizeof(int);
+    size = out_size*in_size*sizeof(float);
     err = cudaMemcpy(dw_old, g_dw_old, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -1369,7 +1369,7 @@ void FC::step(float lr, float beta)
         exit(EXIT_FAILURE);
     }
 
-    size = out_size*sizeof(int);
+    size = out_size*sizeof(float);
     err = cudaMemcpy(bias, g_b, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -1377,7 +1377,7 @@ void FC::step(float lr, float beta)
         exit(EXIT_FAILURE);
     }
 
-    size = out_size*sizeof(int);
+    size = out_size*sizeof(float);
     err = cudaMemcpy(db, g_db, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -1385,7 +1385,7 @@ void FC::step(float lr, float beta)
         exit(EXIT_FAILURE);
     }
 
-    size = out_size*sizeof(int);
+    size = out_size*sizeof(float);
     err = cudaMemcpy(db_old, g_db_old, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -1469,7 +1469,7 @@ float* MaxPool::forward(float *in, int h, int w, int channel)  // h and w are di
     }
 
     int *g_mask = NULL;   // g stands for GPU
-    size = h/2*w/2*channel*sizeof(int);
+    size = h/2*w/2*channel*sizeof(float);
     err = cudaMalloc((void **)&g_mask, size);
     if (err != cudaSuccess)
     {
@@ -1497,7 +1497,7 @@ float* MaxPool::forward(float *in, int h, int w, int channel)  // h and w are di
         exit(EXIT_FAILURE);
     }
 
-    size = h/2*w/2*channel*sizeof(int);
+    size = h/2*w/2*channel*sizeof(float);
     err = cudaMemcpy(mask, g_mask, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -1561,7 +1561,7 @@ float* MaxPool::backward(float *d_out, int h, int w,int channel)  // h and w are
     }
 
     int *g_mask = NULL;   // g stands for GPU
-    size = h*w*channel*sizeof(int);
+    size = h*w*channel*sizeof(float);
     err = cudaMalloc((void **)&g_mask, size);
     if (err != cudaSuccess)
     {
@@ -1707,7 +1707,7 @@ void preprocessing::BGR2GRAY(float* img)
     }
 
     // Copy from Device to host
-    size = h*w*sizeof(int);
+    size = h*w*sizeof(float);
     err = cudaMemcpy(gray_img, g_gray_img, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
@@ -2278,7 +2278,7 @@ float* Dropout::backward(float* d_out)
     }
 
     // Copy memory from device to host
-    size = h*w*channel*sizeof(int);
+    size = h*w*channel*sizeof(float);
     err = cudaMemcpy(d_in, g_d_in, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess)
     {
