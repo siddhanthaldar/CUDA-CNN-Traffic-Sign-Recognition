@@ -21,25 +21,25 @@ int main(void)
 
     preprocessing gray(input_size, input_size, channel_in);
 
-    gray.BGR2GRAY(image);
+    // gray.BGR2GRAY(image);
     
-    #ifdef TEST
-    {
-     cout<<"Image : \n";
-     for(int j=0; j<channel_in; j++){
-         for(int i = 0; i<numElements; i++)
-             cout<<image[j*numElements + i]<<"   ";
-         cout<<"\n";    
-     }        
-     cout<<"\n";
+    // #ifdef TEST
+    // {
+    //  cout<<"Image : \n";
+    //  for(int j=0; j<channel_in; j++){
+    //      for(int i = 0; i<numElements; i++)
+    //          cout<<image[j*numElements + i]<<"   ";
+    //      cout<<"\n";    
+    //  }        
+    //  cout<<"\n";
 
-     cout<<"Gray Image: \n";
-     for(int i = 0; i<numElements; i++)
-         cout<<gray.gray_img[i]<<"   ";
-     cout<<"\n\n";
-    }
-    #endif
-     //for checking
+    //  cout<<"Gray Image: \n";
+    //  for(int i = 0; i<numElements; i++)
+    //      cout<<gray.gray_img[i]<<"   ";
+    //  cout<<"\n\n";
+    // }
+    // #endif
+    //  //for checking
     float *tmp = new float[numElements*channel_out];
     float tmp1[16] = {4,1,3,2,3,1,1,1,0,1,5,2,1,1,2,2};
     tmp = tmp1;
@@ -54,8 +54,8 @@ int main(void)
         cout<<"\n\n";
     }
     #endif
-    gray.Normalization(gray.hist_img);
-
+    
+    gray.Normalization(tmp);//gray.hist_img);
     #ifdef TEST
     {
         cout<<"Normalised Image: \n";

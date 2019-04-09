@@ -494,46 +494,76 @@ concat(float *a1,float *a2,float *a3,float *out,int size_a1,int size_a2,int size
            out[globalThreadId] = a3[globalThreadId - size_a1 - size_a2];
     }
 }
-__global__ void normalize_img(float* in_img, float* out_img, int h, int w, int num_levels)
+__device__ float mean;
+__global__ void calc_mean(float* in_img, int h, int w)
 {
 	int j = blockIdx.x*blockDim.x + threadIdx.x;
 	int i = blockIdx.y*blockDim.y + threadIdx.y;
 
-	__shared__ float mean;
 	if( i == 0 && j == 0)
-		mean = 0;
-
-	__syncthreads();
-	if( i < h && j <w)
 	{
-		atomicAdd(&mean,in_img[i*w+j]);
+		mean = 0.0;
 	}
-	__syncthreads();
-	if( i == 0 && j == 0)
-		mean = (float)mean/(float)(h*w);
-	__syncthreads();
-
-	__shared__ float variance;
-	if( i == 0 && j == 0)
-		variance = 0;
 
 	__syncthreads();
-	if( i < h && j <w)
+	
+	for(unsigned int k = 1; k < h*w; k*=2)
 	{
-		atomicAdd(&variance,pow(in_img[i*w+j],2));
+		if((i*w+j)%(2*k) == 0 && (i*w+j)+k < h*w)
+		{
+			in_img[i*w+j] +=in_img[i*w+j + k];
+		} 
 	}
 	__syncthreads();
 
 	if( i == 0 && j == 0)
 	{
-		variance = (float)variance/(float)(h*w);
+		mean = (float)in_img[0]/(float)(h*w);
+	}
+
+
+}
+__device__ float variance;
+__global__ void calc_variance(float* in_img, int h, int w)
+{
+	int j = blockIdx.x*blockDim.x + threadIdx.x;
+	int i = blockIdx.y*blockDim.y + threadIdx.y;
+
+	
+	if( i == 0 && j == 0)
+	{
+		variance = 0.0;	
+	}
+
+	__syncthreads();
+
+	
+	for(unsigned int k = 1; k < h*w; k*=2)
+	{
+		if((i*w+j)%(2*k) == 0 && (i*w+j)+k < h*w)
+		{
+			if( k ==1)
+				in_img[i*w+j] = pow(in_img[i*w+j],2) + pow(in_img[i*w+j + k],2);
+			else
+				in_img[i*w+j] += in_img[i*w+j + k];
+		} 
+	}
+	__syncthreads();
+
+	if( i == 0 && j == 0)
+	{
+		variance = (float)in_img[0]/(float)(h*w);
 		variance = variance - pow(mean,2);
 	}
-	__syncthreads();
+
+}
+__global__ void normalize_img(float* in_img, float* out_img, int h, int w)
+{
+	int j = blockIdx.x*blockDim.x + threadIdx.x;
+	int i = blockIdx.y*blockDim.y + threadIdx.y;
 
 	if(i<h && j < w)
-	{
-		out_img[i*w+j] = (float)(in_img[i*w+j] - mean) / (sqrt(variance));
+	 {
+	 	out_img[i*w+j] = (float)(in_img[i*w+j] - mean) / (sqrt(variance));
 	}
 }
-

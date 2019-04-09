@@ -2060,7 +2060,25 @@ void preprocessing::Normalization(float *img) // Here img is a gray scale image
     {
         fprintf(stderr, "Failed to allocate device vector g_img (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
-    }    
+    }
+    float *g_img2 = NULL;   
+    size = h*w*sizeof(float);
+    err = cudaMalloc((void **)&g_img2, size);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate device vector g_img2 (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }  
+
+    float *g_img3 = NULL;   
+    size = h*w*sizeof(float);
+    err = cudaMalloc((void **)&g_img3, size);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to allocate device vector g_img3 (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }       
+     
 
     //output image from device
     float *g_out_img = NULL;   
@@ -2070,7 +2088,7 @@ void preprocessing::Normalization(float *img) // Here img is a gray scale image
     {
         fprintf(stderr, "Failed to allocate device vector g_out_img (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
-    }    
+    }     
 
     // Copy Memory to device
     size = h*w*sizeof(float);
@@ -2080,18 +2098,53 @@ void preprocessing::Normalization(float *img) // Here img is a gray scale image
         fprintf(stderr, "Failed to copy vector img from host to device (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
+    size = h*w*sizeof(float);
+    err = cudaMemcpy(g_img2, img, size, cudaMemcpyHostToDevice);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector img from host to device (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    size = h*w*sizeof(float);
+    err = cudaMemcpy(g_img3, img, size, cudaMemcpyHostToDevice);
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to copy vector img from host to device (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
 
     // Call kernel function
 
+    // Call kernel function
     dim3 grid(1,1,1);
-    dim3 block(w,h,1);  
-    normalize_img<<<grid, block>>>(g_img, g_out_img, h, w, 256);  
+    dim3 block(w,h,1); 
+
+    calc_mean<<<grid, block>>>(g_img, h, w);  
+    err = cudaGetLastError();
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to launch mean calculation kernel (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    calc_variance<<<grid, block>>>(g_img2, h, w);  
+    err = cudaGetLastError();
+    if (err != cudaSuccess)
+    {
+        fprintf(stderr, "Failed to launch variance calculation kernel (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }    
+
+    normalize_img<<<grid, block>>>(g_img3, g_out_img, h, w);  
     err = cudaGetLastError();
     if (err != cudaSuccess)
     {
         fprintf(stderr, "Failed to launch normalization kernel (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
-    }    
+    }
+
+
 
     // Copy from Device to host
     size = h*w*sizeof(float);
