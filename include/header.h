@@ -4,6 +4,7 @@
 #include "../src/kernel.cu"
 #include <stdio.h>
 #include <math.h>
+#include <random>
 #include <time.h>
 #include<stdlib.h>
 
@@ -46,17 +47,16 @@ Conv2d::Conv2d(int channel_in, int channel_out, int kernel_size)
 	del_weight = new float[channel_out*kernel_size*kernel_size*channel_in];//Initialize the weights
 	del_vw = new float[channel_out*kernel_size*kernel_size*channel_in];//Initialize the weights
 
+    default_random_engine generator;
+    normal_distribution<double> distribution(0.0, 0.01);
 	for(int i = 0; i < channel_out*kernel_size*kernel_size*channel_in; i++)
 	{
-		weight[i] = rand()*0.1/RAND_MAX;
-        int sign = rand()%2;
-        if(sign == 0)
-            weight[i] *= -1;
-		// del_weight[i] = 0;
-		// cout<<weight[i]<<" ";
+		weight[i] = distribution(generator);
+        del_weight[i] = 0.0;
+        del_vw[i] = 0.0;
 	}
 
-	bias = 0.0;//replace with random
+	bias = distribution(generator);
 }
 
 class FC
@@ -446,17 +446,18 @@ public:
 
 float* softmax_cross_entropy_with_logits::forward(float* logits, int label, int n_classes)
 {
+    float* out = new float[n_classes];
 	double sum = 0;
 	float m = INT_MIN;
 	for(int i = 0; i < n_classes; i++)
 		m = max(m, logits[i]);
-	for(int i=0; i< n_classes; i++){
-		logits[i] -= m;
-		sum += exp(logits[i]);
+	for(int i=0; i< n_classes; i++)
+    {
+		out[i] = logits[i] - m;
+		sum += exp(out[i]);
 	}
-	float* out = new float[n_classes];
 	for(int i=0; i<n_classes; i++){
-		out[i] = exp(logits[i])/sum;
+		out[i] = exp(out[i])/sum;
 	}
 	loss = 0.0;
 	for(int i = 0; i<n_classes; i++){
@@ -886,28 +887,27 @@ FC::FC(int in_features, int out_features)
     dw_old = (float*)malloc(out_size*in_size*sizeof(float));
 
     first = 1;
+
+    default_random_engine generator;
+    normal_distribution<double> distribution(0.0, 0.01);
+
     for(int i=0;i<out_size*in_size;i++)
     {
-        weight[i] = rand()*0.1/(float)RAND_MAX;
+        weight[i] = distribution(generator);
         dw_old[i] = 0;
-        int sign = rand()%2;
-        if(sign == 0)
-            weight[i] *= -1;
-
+        dw[i] = 0;
     }
 
     bias = (float*)malloc(out_size*sizeof(float));
     db = (float*)malloc(out_size*sizeof(float));
     db_old = (float*)malloc(out_size*sizeof(float));
+
     for(int i=0;i<out_size;i++)
     {
-        bias[i] = rand()*0.1/(float)RAND_MAX;
-        int sign = rand()%2;
-        if(sign == 0)
-            bias[i] *= -1;
-
+        bias[i] = distribution(generator);
+        db[i] = 0;
+        db_old[i] = 0;
     }
-
 
     out = (float*)malloc(out_size*sizeof(float));
     d_in = (float*)malloc(in_size*sizeof(float));
