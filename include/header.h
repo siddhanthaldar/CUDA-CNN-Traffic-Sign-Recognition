@@ -49,14 +49,16 @@ Conv2d::Conv2d(int channel_in, int channel_out, int kernel_size)
 
     default_random_engine generator;
     normal_distribution<double> distribution(0.0, 0.01);
+    float a = 0.1;
 	for(int i = 0; i < channel_out*kernel_size*kernel_size*channel_in; i++)
 	{
 		weight[i] = distribution(generator);
         del_weight[i] = 0.0;
         del_vw[i] = 0.0;
+        a += 0.1;
 	}
 
-	bias = distribution(generator);
+	bias = 0;//distribution(generator);
 }
 
 class FC
@@ -891,11 +893,15 @@ FC::FC(int in_features, int out_features)
     default_random_engine generator;
     normal_distribution<double> distribution(0.0, 0.01);
 
+    float a = 0.1;
     for(int i=0;i<out_size*in_size;i++)
     {
-        weight[i] = distribution(generator);
+        // if(i < in_size)
+            weight[i] = distribution(generator);
+        // else weight[i] = a - 1.0;
         dw_old[i] = 0;
         dw[i] = 0;
+        a += 0.1;
     }
 
     bias = (float*)malloc(out_size*sizeof(float));
@@ -904,13 +910,14 @@ FC::FC(int in_features, int out_features)
 
     for(int i=0;i<out_size;i++)
     {
-        bias[i] = distribution(generator);
+        bias[i] = 0.0;//distribution(generator);
         db[i] = 0;
         db_old[i] = 0;
     }
 
     out = (float*)malloc(out_size*sizeof(float));
     d_in = (float*)malloc(in_size*sizeof(float));
+ 
 }
 
 float* FC::forward(float *in)//, int in_size, int out_size)
@@ -1138,9 +1145,11 @@ float* FC::backward(float *in, float *d_out)//,int in_size, int out_size)
         exit(EXIT_FAILURE);
     }
 
-    dim3 grid(in_size,max(out_size, in_size),1);
-    dim3 block(1,1,1);  
+    dim3 grid(in_size,2,1);
+    dim3 block(1,max(out_size, in_size)/2,1);  
+    // cout<<"fc pool = "<<max(out_size, in_size)<<endl;
     FC_bp<<<grid, block>>>(g_d_out,g_d_in,g_w,g_w_transpose,g_dw,g_b,g_db,g_in,out_size,in_size,1);
+
 
     size = in_size*sizeof(float);
     err = cudaMemcpy(d_in, g_d_in, size, cudaMemcpyDeviceToHost);
@@ -1149,6 +1158,8 @@ float* FC::backward(float *in, float *d_out)//,int in_size, int out_size)
         fprintf(stderr, "Failed to copy vector g_d_infrom device to host (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
+
+    // cout<<"\n\n\nMadarchod : "<<weight[0]<<' '<<weight[1]<<"\n\n\n";
 
     size = out_size*in_size*sizeof(float);
     err = cudaMemcpy(dw, g_dw, size, cudaMemcpyDeviceToHost);
@@ -1221,6 +1232,20 @@ float* FC::backward(float *in, float *d_out)//,int in_size, int out_size)
         fprintf(stderr, "Failed to free device vector g_in (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
+
+    // din = wT *d_out
+    // (in_features*1) = (in_features*out_features)*(out_features*1)
+    for(int i = 0; i < in_size; i++)
+    {
+        d_in[i] = 0;
+        for(int j = 0; j < out_size; j++)
+        {
+            d_in[i] += weight[j*in_size + i]*d_out[j];
+            // cout<<"d_out : "<<weight[j*in_size + i]*d_out[j]<<endl;
+        }
+        // cout<<"d_in : "<<d_in[i]<<endl;
+    }
+
     return d_in;
 }
 
@@ -1335,8 +1360,8 @@ void FC::step(float lr, float beta)
 
     // Launch the Vector Add CUDA Kernel
     // Update weights
-    dim3 grid(in_size,out_size,1);
-    dim3 block(1,1,1);
+    dim3 grid(in_size,1,1);
+    dim3 block(1,out_size,1);
     FC_step_w<<<grid, block>>>(g_w,g_dw,g_dw_old,lr,beta,out_size,in_size,1,first);
 
     // Update bias

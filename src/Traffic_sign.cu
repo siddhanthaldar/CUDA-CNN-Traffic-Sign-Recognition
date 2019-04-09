@@ -1,6 +1,6 @@
 #include "../include/header.h"
 #include <fstream>
-#define NUM_IMAGE 10
+#define NUM_IMAGE 50
 #define IMAGE_DIM 32
 #define n_classes 43
 
@@ -93,6 +93,7 @@ int main(void)
 	for(int epoch = 0; epoch < 100; epoch++)
 	{
 		float acc = 0;
+		float epoch_loss = 0;
 		for(int idx = 0; idx < NUM_IMAGE; idx++)
 		{
 			float* img = out_img[idx];
@@ -115,6 +116,10 @@ int main(void)
 			// float* out_S1 = S1.forward(out_F2, 1,1,n_classes); 
 
 
+			// for(int i = 0; i < n_classes; i++)
+			// 	cout<<out_F2[i]<<' ';
+			// cout<<endl;
+
 
 			float* out_S = S.forward(out_F2, label[idx], n_classes);
 
@@ -130,6 +135,7 @@ int main(void)
 				acc += 1;
 
 			float loss = S.loss;
+			epoch_loss += S.loss;
 			cout<<"Loss : "<<loss<<endl;
 			// cout<<"Relu : \n";
 			// for(int i = 0; i < n_classes; i++)
@@ -180,12 +186,12 @@ int main(void)
 			del_out = C1.backward(del_out, img, IMAGE_DIM, IMAGE_DIM);
 
 
-			F2.step(1e-3, 0.9);
-			F1.step(1e-3, 0.9);
-			C1.step(1e-3, 0.9);
-			C2.step(1e-3, 0.9);
-			C3.step(1e-3, 0.9);
+			F2.step(1e-2, 0.9);
+			F1.step(1e-2, 0.9);
+			C1.step(1e-2, 0.9);
+			C2.step(1e-2, 0.9);
+			C3.step(1e-2, 0.9);
 		}
-		cout<<"\nEpoch : "<<epoch<<", Accuracy : "<<acc/NUM_IMAGE<<endl;
+		cout<<"\nEpoch : "<<epoch<<", Avg Loss : "<<epoch_loss/NUM_IMAGE<<", Accuracy : "<<acc/NUM_IMAGE<<endl;
 	}
 }

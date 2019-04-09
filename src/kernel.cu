@@ -75,7 +75,7 @@ __global__ void conv_fp(float* d_out, float* d_img,float* d_filter,int channel_i
 			{
 				int out_index = t_z*(img_width*img_height) + t_y*img_width + t_x;
 				int img_index = k*(img_width*img_height) + i*img_width + j;
-				int filter_index = t_z*(kernel_size*kernel_size*channel_in) + k*(kernel_size*kernel_size) + i - t_y + kernel_size/2 + j - t_x + kernel_size/2;
+				int filter_index = t_z*(kernel_size*kernel_size*channel_in) + k*(kernel_size*kernel_size) + (i - t_y + kernel_size/2)*kernel_size + (j - t_x + kernel_size/2);
 				d_out[out_index] += d_img[img_index]*d_filter[filter_index];
 			}
 		}
