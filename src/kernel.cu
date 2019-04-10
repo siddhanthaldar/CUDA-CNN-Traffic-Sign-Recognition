@@ -567,3 +567,52 @@ __global__ void normalize_img(float* in_img, float* out_img, int h, int w)
 	 	out_img[i*w+j] = (float)(in_img[i*w+j] - mean) / (sqrt(variance));
 	}
 }
+
+__global__ void matrix_mul_kernel(int* a, int* b, int* c, int a_rows, int a_columns, int b_columns)
+{
+	//declare shared memory matrices for A and B matrices
+	__shared__ int shared_a_tile[TILE_SIZE][TILE_SIZE];
+	__shared__ int shared_b_tile[TILE_SIZE][TILE_SIZE];
+
+	int tx = threadIdx.x;
+	int ty = threadIdx.y;
+	int col = blockIdx.x * blockDim.x + threadIdx.x;
+	int row = blockIdx.y * blockDim.y + threadIdx.y;
+
+	//check if thread directly maps to the dimensions of the resulting matrix
+	if (row < a_rows && col < b_columns)
+	{
+		int result = 0;
+		int k;
+		int m;
+		
+		//calculate C matrix indexes in ms. Each m shares 
+		//TILE_SIZE * TILE_SIZE data copied to the shared matrix A 
+		//and matrix B.
+		for (m = 0; m < (a_columns + TILE_SIZE -1)/TILE_SIZE; m++)
+		{
+			if (m*TILE_SIZE + tx < a_columns && row < a_rows)
+			shared_a_tile[ty][tx] = a[row * a_columns + m * TILE_SIZE + tx];
+		    else
+		    shared_a_tile[ty][tx] = 0.0;
+
+            if (m*TILE_SIZE + ty < a_columns && col < b_columns)
+			shared_b_tile[ty][tx] = b[(m * TILE_SIZE + ty) * b_columns + col];
+		    else
+		    shared_b_tile[ty][tx] = 0.0;
+
+			__syncthreads();
+			
+			for (k = 0; k < TILE_SIZE; k++)
+			{
+				// if (k + (m * TILE_SIZE) < a_columns) 
+				// {
+					result += (shared_a_tile[ty][k] * shared_b_tile[k][tx]);
+				// }
+			}
+			__syncthreads();
+		}	
+		if (row < a_rows && col < b_columns)
+		c[row * b_columns + col] = result;
+	}
+}
