@@ -18,7 +18,43 @@ __global__ void conv_bp(float* d_del_weight, float* d_input, float* d_del_out, i
 __global__ void rotate(float* d_weight_t, float* d_weight, int channel_in, int channel_out, int kernel_size);
 __global__ void conv_bp_x(float* d_del_input, float* d_del_out, float* d_weight_t, int channel_in,int channel_out,int kernel_size,int input_height,int input_width);
 __global__ void conv_step(float* d_weight, float* d_del_weight, float* d_del_vw, int channel_in, int channel_out, int kernel_size, float l_rate, float beeta, bool is_first);
-/////******Add other function of Pool_Fc and Activation function******///////// 
+__global__ void ReLU_fp(float *out, float *in, int h, int w, int channel);
+__global__ void ReLU_bp(float *d_in, float *d_out, float*out, int h, int w, int channel);
+__global__ void Sigmoid_fp(float *out, float *in, int h, int w, int channel);
+__global__ void Sigmoid_bp(float *d_in, float *d_out, float*out, int h, int w, int channel);
+__global__ void maxpool_fp(float *in, float *out, int *mask, int h, int w,int channel);
+__global__ void maxpool_bp(float *d_in, float *d_out, int *mask, int h, int w,int channel);
+__global__ void FC_fp(float *in, float *out, float *w, float *b, int m,int n,int p);
+__global__ void FC_bp(float *d_out, float *d_in, float *w, float *w_transpose,float *dw,float *b,float *db,float *in,int m,int n,int p);
+__global__ void FC_step_w(float *w, float *dw, float *dw_old, float lr, float beta, int m, int n, int p,int first);
+__global__ void FC_step_b(float *b, float *db, float *db_old, float lr, float beta, int m, int n, int p,int first);
+__global__ void bgr2gray(float *in_img, float *gray_img, int h, int w, int channel);
+__global__ void histogram_equalization(float *in_img, int h, int w, int num_levels);
+__global__ void calcCDF(float* in_img , float* out_img, int h, int w, int num_levels);
+__global__ void negative_transformation(float *in_img, float* out_img, int h, int w, int num_levels);
+__global__ void log_transformation(float *in_img, float* out_img, int h, int w, int num_levels, float param);
+__global__ void gamma_transformation(float *in_img, float* out_img, int h, int w, int num_levels, float gamma);
+__device__ float generate( curandState* globalState, int ind ) ;
+__global__ void setup_kernel ( curandState * state, unsigned long seed, int h, int w);
+__global__ void dropout_fp(float *in, bool *mask, float drop_prob, int h, int w, int channel, float *rand);
+__global__ void dropout_bp(float *d_out, float* d_in, bool *mask, int h, int w, int channels);
+__global__ void concat(float *a1,float *a2,float *a3,float *out,int size_a1,int size_a2,int size_a3);
+__global__ void calc_mean(float* in_img, int h, int w);
+__global__ void calc_variance(float* in_img, int h, int w);
+__global__ void normalize_img(float* in_img, float* out_img, int h, int w);
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class Conv2d
 {
