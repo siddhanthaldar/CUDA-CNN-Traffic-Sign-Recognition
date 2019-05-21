@@ -149,4 +149,4 @@ In case if you find any error it would be great if you can create an issue, and 
 
 ### Documentation 
 
-For more explaination of code and the functions please refer to this <a href = https://docs.google.com/document/d/1Jr2gSrukpzPt6fTgBoLgYMfiQwvUIQ5-VtqwsjeKEWc/edit?usp=sharing>documentation</a>.
+For more explaination of code and the functions please refer to this <a href = "https://docs.google.com/document/d/1Jr2gSrukpzPt6fTgBoLgYMfiQwvUIQ5-VtqwsjeKEWc/edit?usp=sharing">documentation</a>.
