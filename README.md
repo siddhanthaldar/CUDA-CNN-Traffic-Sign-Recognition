@@ -10,9 +10,12 @@ We have implemented the deep neural network consisting of CNN and FC layers in C
 ```
 
 ### Prerequisites
-Cuda version 9.0
+Cuda version 9.0<br \>
 gcc compiler
 
+### Dataset
+
+You can find the flattened vector of image for traffic sign classification in dataset.txt and new_dataset.txt
 
 ## Pipeline
 
@@ -144,3 +147,6 @@ public:
 
 In case if you find any error it would be great if you can create an issue, and if you solve it too or add some other classes, feel free to send PR.
 
+### Documentation 
+
+For more explaination of code and the functions please refer to this <a href = https://docs.google.com/document/d/1Jr2gSrukpzPt6fTgBoLgYMfiQwvUIQ5-VtqwsjeKEWc/edit?usp=sharing>documentation</a>.
